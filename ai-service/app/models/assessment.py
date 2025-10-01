@@ -19,16 +19,17 @@ class Assessment(Base):
     student_id = Column(Integer, ForeignKey("students.id", ondelete="CASCADE"), nullable=False)
     
     # Assessment data
-    answers = Column(JSON, nullable=False)  # Dict of question_id: score (0-3)
+    answers = Column(JSON, nullable=False)  # List of 7 answers (0-3 each)
     total_score = Column(Integer, nullable=False)  # Sum of all answers (0-21)
     severity_level = Column(String(50), nullable=False)  # minimal, mild, moderate, severe
+    functional_impairment = Column(Integer, nullable=True)  # How difficult symptoms make daily functioning (0-3)
     
     # AI Analysis
-    gemini_analysis = Column(Text, nullable=True)  # AI-generated analysis
-    recommendations = Column(Text, nullable=True)  # AI-generated recommendations
+    analysis = Column(Text, nullable=True)  # AI-generated analysis (Vietnamese)
+    recommendations = Column(JSON, nullable=True)  # List of AI-generated recommendations
     
     # Metadata
-    completed_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
     notes = Column(Text, nullable=True)  # Optional student notes
 
     # Relationships

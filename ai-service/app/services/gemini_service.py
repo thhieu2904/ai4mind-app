@@ -2,6 +2,7 @@
 Gemini AI Service - Interface với Google Gemini API
 Xử lý chat, phân tích GAD-7, và tạo recommendations
 """
+import asyncio
 import google.generativeai as genai
 from typing import List, Dict, Optional
 from app.core.config import settings
@@ -42,10 +43,10 @@ class GeminiService:
                     }
                     for msg in conversation_history
                 ])
-                response = chat.send_message(message)
+                response = await asyncio.to_thread(chat.send_message, message)
             else:
                 # Single message without history
-                response = self.model.generate_content(message)
+                response = await asyncio.to_thread(self.model.generate_content, message)
             
             return response.text
         
@@ -85,23 +86,71 @@ Mức độ: {severity}
 Chi tiết câu trả lời (scale 0-3: Không bao giờ, Vài ngày, Hơn một nửa số ngày, Gần như mỗi ngày):
 {self._format_gad7_answers(answers)}
 
-Hãy cung cấp:
-1. **Phân tích ngắn gọn** về tình trạng tâm lý của sinh viên (2-3 câu)
-2. **Khuyến nghị cụ thể** để cải thiện tình trạng (3-5 gợi ý thực tế)
+Hãy cung cấp phản hồi theo định dạng sau (BẮT BUỘC tuân thủ format):
+
+PHÂN TÍCH:
+[Viết 2-3 câu phân tích ngắn gọn về tình trạng tâm lý của sinh viên]
+
+KHUYẾN NGHỊ:
+1. [Khuyến nghị cụ thể thứ nhất]
+2. [Khuyến nghị cụ thể thứ hai]
+3. [Khuyến nghị cụ thể thứ ba]
+4. [Khuyến nghị cụ thể thứ tư - nếu cần]
+5. [Khuyến nghị cụ thể thứ năm - nếu cần]
 
 Viết bằng tiếng Việt, giọng điệu ấm áp, khuyến khích và chuyên nghiệp.
+Mỗi khuyến nghị nên là một câu hoàn chỉnh, thực tế và dễ thực hiện.
 """
         
         try:
-            response = self.model.generate_content(prompt)
+            # Run sync Gemini API call in thread pool to not block event loop
+            response = await asyncio.to_thread(self.model.generate_content, prompt)
             result_text = response.text
             
-            # Parse response into analysis and recommendations
-            # Simple split - có thể improve parsing logic
-            parts = result_text.split("**Khuyến nghị")
+            # Parse response - split by section markers
+            analysis = ""
+            recommendations = []
             
-            analysis = parts[0].replace("**Phân tích", "").strip()
-            recommendations = parts[1].strip() if len(parts) > 1 else ""
+            # Split by PHÂN TÍCH and KHUYẾN NGHỊ sections
+            if "PHÂN TÍCH:" in result_text and "KHUYẾN NGHỊ:" in result_text:
+                parts = result_text.split("KHUYẾN NGHỊ:")
+                
+                # Extract analysis
+                analysis_part = parts[0].replace("PHÂN TÍCH:", "").strip()
+                analysis = analysis_part
+                
+                # Extract recommendations from numbered list
+                if len(parts) > 1:
+                    rec_text = parts[1].strip()
+                    import re
+                    # Match numbered items (1., 2., etc.)
+                    rec_items = re.findall(r'\d+\.\s*(.+?)(?=\n\d+\.|\Z)', rec_text, re.DOTALL)
+                    recommendations = [r.strip() for r in rec_items if r.strip()]
+            
+            # Fallback: try old format with ** markers
+            elif "**Phân tích" in result_text or "**Khuyến nghị" in result_text:
+                parts = result_text.split("**Khuyến nghị")
+                analysis = parts[0].replace("**Phân tích", "").replace("**:", "").strip()
+                if len(parts) > 1:
+                    rec_text = parts[1].strip()
+                    import re
+                    rec_items = re.split(r'\n\s*[\d]+\.\s*|\n\s*[-*]\s*', rec_text)
+                    recommendations = [r.strip() for r in rec_items if r.strip() and len(r.strip()) > 10]
+            
+            # If parsing completely failed, use entire response as analysis
+            if not analysis:
+                analysis = result_text.strip()
+            
+            # If no recommendations found, provide fallback
+            if not recommendations:
+                if total_score <= 4:
+                    recommendations = ["Duy trì lối sống lành mạnh và kỹ thuật giảm căng thẳng."]
+                elif total_score <= 9:
+                    recommendations = ["Thực hành kỹ thuật thư giãn hàng ngày.", "Tham khảo tài liệu tự chăm sóc sức khỏe tâm thần."]
+                elif total_score <= 14:
+                    recommendations = ["Nên tham khảo ý kiến chuyên gia tâm lý.", "Thực hành kỹ thuật quản lý lo âu hàng ngày."]
+                else:
+                    recommendations = ["Nên gặp chuyên gia sức khỏe tâm thần ngay.", "Tìm kiếm hỗ trợ từ gia đình và bạn bè."]
             
             return {
                 "analysis": analysis,
@@ -109,10 +158,13 @@ Viết bằng tiếng Việt, giọng điệu ấm áp, khuyến khích và chuy
             }
         
         except Exception as e:
+            print(f"Gemini API error in analyze_gad7: {e}")
+            import traceback
+            traceback.print_exc()
             # Fallback if Gemini fails
             return {
                 "analysis": f"Kết quả đánh giá cho thấy mức độ {severity}.",
-                "recommendations": "Hãy tham khảo ý kiến chuyên gia tâm lý nếu cảm thấy cần thiết."
+                "recommendations": ["Hãy tham khảo ý kiến chuyên gia tâm lý nếu cảm thấy cần thiết."]
             }
     
     def _format_gad7_answers(self, answers: Dict[int, int]) -> str:
@@ -156,7 +208,7 @@ Chỉ trả về tiêu đề, không có dấu ngoặc kép hay giải thích.
 """
         
         try:
-            response = self.model.generate_content(prompt)
+            response = await asyncio.to_thread(self.model.generate_content, prompt)
             title = response.text.strip().strip('"').strip("'")
             return title[:50]  # Limit to 50 chars
         except:

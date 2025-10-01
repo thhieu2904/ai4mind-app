@@ -9,6 +9,13 @@ from .auth import (
     Token,
     TokenData
 )
+from .assessment import (
+    AssessmentCreate,
+    AssessmentResponse,
+    AssessmentDetail,
+    AssessmentStats,
+    AssessmentListResponse
+)
 
 __all__ = [
     "UserBase",
@@ -16,5 +23,10 @@ __all__ = [
     "UserLogin",
     "UserResponse",
     "Token",
-    "TokenData"
+    "TokenData",
+    "AssessmentCreate",
+    "AssessmentResponse",
+    "AssessmentDetail",
+    "AssessmentStats",
+    "AssessmentListResponse"
 ]

@@ -1,6 +1,6 @@
 """
 API v1 endpoints
 """
-from . import auth
+from . import auth, assessments
 
-__all__ = ["auth"]
+__all__ = ["auth", "assessments"]
