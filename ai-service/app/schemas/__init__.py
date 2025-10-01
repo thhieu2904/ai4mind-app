@@ -16,6 +16,28 @@ from .assessment import (
     AssessmentStats,
     AssessmentListResponse
 )
+from .student import (
+    GenderEnum,
+    StudentBase,
+    StudentCreate,
+    StudentUpdate,
+    StudentResponse,
+    StudentPublicProfile
+)
+from .voice_analysis import (
+    ProcessingStatus,
+    AudioFeatures,
+    EmotionScores,
+    Keyword,
+    PsychologicalMarkers,
+    TextAnalysis,
+    NormalizedFeatures,
+    VoiceAnalysisCreate,
+    VoiceAnalysisResponse,
+    VoiceAnalysisDetail,
+    VoiceAnalysisSummary,
+    VoicePrompt
+)
 
 __all__ = [
     "UserBase",
@@ -28,5 +50,23 @@ __all__ = [
     "AssessmentResponse",
     "AssessmentDetail",
     "AssessmentStats",
-    "AssessmentListResponse"
+    "AssessmentListResponse",
+    "GenderEnum",
+    "StudentBase",
+    "StudentCreate",
+    "StudentUpdate",
+    "StudentResponse",
+    "StudentPublicProfile",
+    "ProcessingStatus",
+    "AudioFeatures",
+    "EmotionScores",
+    "Keyword",
+    "PsychologicalMarkers",
+    "TextAnalysis",
+    "NormalizedFeatures",
+    "VoiceAnalysisCreate",
+    "VoiceAnalysisResponse",
+    "VoiceAnalysisDetail",
+    "VoiceAnalysisSummary",
+    "VoicePrompt"
 ]

@@ -21,6 +21,7 @@ class Student(Base):
     date_of_birth = Column(Date, nullable=True)
     phone_number = Column(String(20), nullable=True)
     address = Column(Text, nullable=True)
+    gender = Column(String(20), nullable=True, default='prefer_not_to_say')  # male, female, other, prefer_not_to_say
     
     # Academic info
     university = Column(String(255), nullable=True)
@@ -37,6 +38,7 @@ class Student(Base):
     assessments = relationship("Assessment", back_populates="student", cascade="all, delete-orphan")
     conversations = relationship("Conversation", back_populates="student", cascade="all, delete-orphan")
     parent_consents = relationship("ParentConsent", back_populates="student", cascade="all, delete-orphan")
+    voice_analyses = relationship("VoiceAnalysis", back_populates="student", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Student(id={self.id}, student_code={self.student_code})>"

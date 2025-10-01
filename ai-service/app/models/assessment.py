@@ -34,6 +34,7 @@ class Assessment(Base):
 
     # Relationships
     student = relationship("Student", back_populates="assessments")
+    voice_analyses = relationship("VoiceAnalysis", back_populates="assessment")
 
     def __repr__(self):
         return f"<Assessment(id={self.id}, student_id={self.student_id}, score={self.total_score})>"
