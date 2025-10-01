@@ -1,3 +1,13 @@
+# ==============================================
+# ENVIRONMENT & SECRETS - NEVER COMMIT!
+# ==============================================
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+secrets/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
