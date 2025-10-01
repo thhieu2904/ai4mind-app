@@ -1,0 +1,39 @@
+# Voice Service Dependencies
+
+# FastAPI framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+
+# Audio processing
+openai-whisper==20231117
+librosa==0.10.1
+soundfile==0.12.1
+audioread==3.0.1
+
+# Scientific computing
+numpy==1.24.3
+scipy==1.11.4
+
+# File operations
+aiofiles==23.2.1
+
+# Data validation
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# Database (PostgreSQL)
+psycopg2-binary==2.9.9
+sqlalchemy==2.0.23
+
+# HTTP client for ai-service communication
+httpx==0.25.2
+
+# Environment variables
+python-dotenv==1.0.0
+
+# Vietnamese NLP (optional, for text analysis)
+underthesea==6.7.0
+
+# Utilities
+python-dateutil==2.8.2
