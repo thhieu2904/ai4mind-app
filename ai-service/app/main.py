@@ -3,10 +3,14 @@ FastAPI Application Entry Point
 AI4Mind API Gateway
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from sqlalchemy.exc import SQLAlchemyError
+
 from app.core.config import settings
+from app.api.v1.api import api_router
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -25,6 +29,31 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Exception Handlers
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Handle validation errors"""
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={
+            "detail": exc.errors(),
+            "message": "Validation error"
+        }
+    )
+
+
+@app.exception_handler(SQLAlchemyError)
+async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError):
+    """Handle database errors"""
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={
+            "message": "Database error occurred",
+            "detail": str(exc) if settings.ENVIRONMENT == "development" else "Internal server error"
+        }
+    )
 
 
 @app.get("/")
@@ -48,9 +77,8 @@ async def health_check():
     }
 
 
-# Include routers will be added here
-# from app.api.v1.router import api_router
-# app.include_router(api_router, prefix="/api/v1")
+# Include API v1 router
+app.include_router(api_router, prefix="/api/v1")
 
 
 if __name__ == "__main__":
