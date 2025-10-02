@@ -59,6 +59,10 @@ class VoiceAnalysis(Base):
     gender_used = Column(String(20), nullable=True)  # male, female, other, prefer_not_to_say
     normalized_features = Column(JSON, nullable=True)  # {pitch_z_score, pitch_deviation, pitch_variability, energy_relative}
     
+    # 🆕 Comprehensive Analysis from Gemini (cross-validation of GAD-7 + Voice)
+    comprehensive_analysis = Column(Text, nullable=True)  # Gemini's comprehensive analysis text
+    comprehensive_recommendations = Column(JSON, nullable=True)  # Array of recommendation strings
+    
     # Processing metadata
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
     processed_at = Column(DateTime(timezone=True), nullable=True)

@@ -115,10 +115,10 @@ async def submit_assessment(
     db.commit()
     db.refresh(assessment)
     
-    # Return response with user_id for frontend
+    # Return response with student_id (not user_id)
     assessment_dict = {
         "id": assessment.id,
-        "user_id": current_user.id,
+        "student_id": assessment.student_id,  # Use student_id from assessment
         "answers": assessment.answers,
         "total_score": assessment.total_score,
         "severity_level": assessment.severity_level,

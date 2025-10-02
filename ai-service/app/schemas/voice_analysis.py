@@ -139,20 +139,25 @@ class VoiceAnalysisResponse(BaseModel):
     student_id: int
     assessment_id: Optional[int] = None
     
-    # Audio file URL (signed URL for secure access)
-    audio_file_url: Optional[str] = Field(None, description="Temporary signed URL to access audio file")
+    # Audio file info
+    audio_file_path: str
     
     # Transcription
     transcription: Optional[str] = None
     
     # Analysis results
-    detected_emotions: Optional[Dict[str, float]] = None
     dominant_emotion: Optional[str] = None
     sentiment_score: Optional[float] = None
     
     # Metadata
     processing_status: ProcessingStatus
     created_at: datetime
+    
+    # Comprehensive analysis (when combined with GAD-7)
+    comprehensive_analysis: Optional[str] = Field(None, description="Gemini's combined analysis of GAD-7 + Voice")
+    comprehensive_recommendations: Optional[List[str]] = Field(None, description="Combined recommendations")
+    gad7_score: Optional[int] = Field(None, description="Linked GAD-7 score")
+    gad7_severity: Optional[str] = Field(None, description="Linked GAD-7 severity level")
     
     class Config:
         from_attributes = True

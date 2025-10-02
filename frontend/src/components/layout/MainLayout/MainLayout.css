@@ -1,0 +1,30 @@
+/* Main Layout Styles */
+
+.main-layout {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #e0e7ff 0%, #ddd6fe 100%);
+}
+
+.main-content {
+  padding-top: 60px; /* Header height */
+  padding-bottom: 70px; /* BottomNav height */
+  min-height: 100vh;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* Mobile optimization */
+@media (max-width: 640px) {
+  .main-content {
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+/* Desktop view - center content */
+@media (min-width: 641px) {
+  .main-content {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}

@@ -21,11 +21,14 @@ class UserCreate(UserBase):
     # Additional fields for specific roles
     phone: Optional[str] = Field(None, max_length=20)
     
-    # Student specific
+    # Student specific - IMPORTANT for GAD-7 assessment
+    date_of_birth: Optional[str] = Field(None, description="Date of birth in YYYY-MM-DD format")
+    gender: Optional[str] = Field(None, pattern="^(male|female|other|prefer_not_to_say)$")
     student_code: Optional[str] = Field(None, max_length=20)
     university: Optional[str] = Field(None, max_length=200)
     major: Optional[str] = Field(None, max_length=200)
     year_of_study: Optional[int] = Field(None, ge=1, le=7)
+    address: Optional[str] = Field(None, max_length=500)
     
     # Counselor specific
     license_number: Optional[str] = Field(None, max_length=50)
@@ -47,10 +50,12 @@ class UserCreate(UserBase):
     
     @validator('student_code')
     def validate_student_code(cls, v, values):
-        """Validate student code is required for student role"""
-        if values.get('role') == 'student' and not v:
-            raise ValueError('Student code is required for student role')
-        return v
+        """Validate student code format if provided"""
+        # Student code is now OPTIONAL - can be added later
+        # Students can register without it and add it in their profile later
+        if v and len(v.strip()) == 0:
+            raise ValueError('Student code cannot be empty if provided')
+        return v if v else None
     
     @validator('license_number')
     def validate_license_number(cls, v, values):
