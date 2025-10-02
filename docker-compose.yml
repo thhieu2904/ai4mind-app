@@ -1,0 +1,138 @@
+version: "3.8"
+
+services:
+  # ============================================
+  # AI Service (Main API Gateway)
+  # ============================================
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: ai4mind-ai-service
+    ports:
+      - "8000:8000"
+    environment:
+      # Service URLs (Internal Docker network)
+      - VOICE_SERVICE_URL=http://voice-service:8001
+      - AI_SERVICE_URL=http://ai-service:8000
+
+      # Frontend & CORS
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
+
+      # Database (Supabase)
+      - SUPABASE_DATABASE_URL=${SUPABASE_DATABASE_URL}
+      - DATABASE_URL=${SUPABASE_DATABASE_URL}
+
+      # Supabase Storage & Auth
+      - SUPABASE_PROJECT_URL=${SUPABASE_PROJECT_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+
+      # Gemini AI
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.0-flash}
+
+      # JWT
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      - REFRESH_TOKEN_EXPIRE_DAYS=${REFRESH_TOKEN_EXPIRE_DAYS:-7}
+
+      # Redis (Optional)
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+
+      # Environment
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - DEBUG=${DEBUG:-false}
+    depends_on:
+      - voice-service
+    networks:
+      - ai4mind-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ============================================
+  # Voice Service (Voice Analysis)
+  # ============================================
+  voice-service:
+    build:
+      context: ./voice-service
+      dockerfile: Dockerfile
+    container_name: ai4mind-voice-service
+    ports:
+      - "8001:8001"
+    environment:
+      # Service URLs (Internal Docker network)
+      - AI_SERVICE_URL=http://ai-service:8000
+
+      # Database (Supabase)
+      - DATABASE_URL=${SUPABASE_DATABASE_URL}
+
+      # Whisper Model
+      - WHISPER_MODEL=${WHISPER_MODEL:-base}
+
+      # Processing
+      - ENABLE_EMOTION_DETECTION=true
+      - ENABLE_TEXT_ANALYSIS=true
+
+      # Server
+      - HOST=0.0.0.0
+      - PORT=8001
+
+      # Environment
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+    volumes:
+      - voice-storage:/app/storage/audio
+    networks:
+      - ai4mind-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ============================================
+  # Redis (Optional - for caching & rate limiting)
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: ai4mind-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - ai4mind-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+# ============================================
+# Networks
+# ============================================
+networks:
+  ai4mind-network:
+    driver: bridge
+    name: ai4mind-network
+
+# ============================================
+# Volumes
+# ============================================
+volumes:
+  voice-storage:
+    name: ai4mind-voice-storage
+  redis-data:
+    name: ai4mind-redis-data

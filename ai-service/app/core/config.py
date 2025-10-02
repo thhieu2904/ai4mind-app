@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     # Database - Read from SUPABASE_DATABASE_URL env variable
     DATABASE_URL: str = "postgresql://localhost/ai4mind"
     
+    # Supabase (for Storage and RLS)
+    SUPABASE_PROJECT_URL: str = ""
+    SUPABASE_ANON_KEY: str = ""  # For client-side access
+    SUPABASE_SERVICE_ROLE_KEY: str = ""  # For server-side admin access
+    
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
     REDIS_PASSWORD: str = ""
@@ -39,14 +44,17 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-1.5-flash"
     
-    # Microservices
-    VOICE_SERVICE_URL: str = "http://localhost:8001"
+    # Microservices (REQUIRED for production)
+    VOICE_SERVICE_URL: str  # No default - must be set via environment
     
-    # CORS
-    CORS_ORIGINS: List[str] = [
-        "http://localhost:3000",
-        "http://localhost:3001"
-    ]
+    # Frontend & CORS
+    FRONTEND_URL: str = "http://localhost:3000"
+    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:3001"  # Comma-separated URLs
+    
+    @property
+    def cors_origins_list(self) -> List[str]:
+        """Parse CORS_ORIGINS string to list"""
+        return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
     
     # File Upload
     UPLOAD_DIR: str = "../shared/audio-files"
