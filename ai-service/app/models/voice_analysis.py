@@ -66,6 +66,7 @@ class VoiceAnalysis(Base):
     # Relationships
     student = relationship("Student", back_populates="voice_analyses")
     assessment = relationship("Assessment", back_populates="voice_analyses")
+    message = relationship("Message", back_populates="voice_analysis", uselist=False)
 
     def __repr__(self):
         return f"<VoiceAnalysis(id={self.id}, student_id={self.student_id}, status={self.processing_status})>"

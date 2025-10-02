@@ -134,34 +134,51 @@ class VoiceAnalysisCreate(BaseModel):
 
 # Response schemas
 class VoiceAnalysisResponse(BaseModel):
+    """Basic voice analysis response with audio URL"""
+    id: int
+    student_id: int
+    assessment_id: Optional[int] = None
+    
+    # Audio file URL (signed URL for secure access)
+    audio_file_url: Optional[str] = Field(None, description="Temporary signed URL to access audio file")
+    
+    # Transcription
+    transcription: Optional[str] = None
+    
+    # Analysis results
+    detected_emotions: Optional[Dict[str, float]] = None
+    dominant_emotion: Optional[str] = None
+    sentiment_score: Optional[float] = None
+    
+    # Metadata
+    processing_status: ProcessingStatus
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class VoiceAnalysisDetail(BaseModel):
     """Comprehensive voice analysis response"""
     id: int
     student_id: int
     assessment_id: Optional[int] = None
     
+    # Audio file URL (signed URL for secure access)
+    audio_file_url: Optional[str] = Field(None, description="Temporary signed URL to access audio file")
+    
     # File info
-    audio_file_path: str
     file_size_bytes: Optional[int] = None
     audio_duration: Optional[float] = None
-    audio_format: Optional[str] = None
-    
-    # Prompt
-    prompt_id: Optional[int] = None
-    prompt_text: Optional[str] = None
     
     # Transcription
     transcription: Optional[str] = None
-    transcription_language: str = "vi"
     word_count: Optional[int] = None
-    transcription_confidence: Optional[float] = None
     
     # Analysis results
-    audio_features: Optional[Dict[str, Any]] = None  # Can also use AudioFeatures
-    detected_emotions: Optional[Dict[str, float]] = None  # Can also use EmotionScores
+    audio_features: Optional[Dict[str, Any]] = None
+    detected_emotions: Optional[Dict[str, float]] = None
     dominant_emotion: Optional[str] = None
-    emotion_confidence: Optional[float] = None
-    
-    # Text analysis
     sentiment_score: Optional[float] = None
     keywords: Optional[List[Dict[str, Any]]] = None
     psychological_markers: Optional[Dict[str, int]] = None
@@ -171,13 +188,36 @@ class VoiceAnalysisResponse(BaseModel):
     normalized_features: Optional[Dict[str, Any]] = None
     
     # Metadata
-    created_at: datetime
-    processed_at: Optional[datetime] = None
     processing_status: ProcessingStatus
     processing_time: Optional[float] = None
     has_error: int = 0
     error_message: Optional[str] = None
+    created_at: datetime
     
+    class Config:
+        from_attributes = True
+
+
+class VoiceAnalysisSummary(BaseModel):
+    """Summary of voice analysis for list views"""
+    id: int
+    student_id: int
+    assessment_id: Optional[int] = None
+    
+    # Audio file URL
+    audio_file_url: Optional[str] = None
+    
+    # Key results
+    transcription: Optional[str] = Field(None, description="First 200 characters")
+    dominant_emotion: Optional[str] = None
+    sentiment_score: Optional[float] = None
+    
+    # Metadata
+    processing_status: ProcessingStatus
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
     class Config:
         from_attributes = True
 

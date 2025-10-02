@@ -116,10 +116,44 @@ class GenderNormalizer:
             )
             normalized.update(energy_norm)
         
-        # Copy gender-independent features
-        for key in ["speech_rate", "pause_count", "voice_stability"]:
-            if key in raw_features:
-                normalized[key] = raw_features[key]
+        # Copy and rename gender-independent features
+        # Use syllables_per_second (float) instead of speech_rate (string category)
+        if "syllables_per_second" in raw_features:
+            normalized["speech_rate"] = raw_features["syllables_per_second"]
+        
+        if "pause_count" in raw_features:
+            normalized["pause_count"] = raw_features["pause_count"]
+            
+        if "voice_stability" in raw_features:
+            normalized["voice_stability"] = raw_features["voice_stability"]
+        
+        # Add pause_ratio (required by NormalizedFeatures)
+        if "pause_ratio" in raw_features:
+            normalized["pause_ratio"] = raw_features["pause_ratio"]
+        else:
+            normalized["pause_ratio"] = 0.0  # Default if missing
+        
+        # Calculate severity (simple heuristic based on features)
+        severity_score = 0.0
+        if "pitch_z_score" in normalized:
+            severity_score += abs(normalized["pitch_z_score"]) * 0.3
+        if "energy_relative" in normalized:
+            severity_score += abs(normalized.get("energy_relative", 0)) * 0.2
+        if "voice_stability" in normalized:
+            # Low stability = high severity
+            severity_score += (1.0 - normalized["voice_stability"]) * 0.5
+        
+        # Convert score to category
+        if severity_score < 0.3:
+            severity_category = "normal"
+        elif severity_score < 0.5:
+            severity_category = "mild"
+        elif severity_score < 0.7:
+            severity_category = "moderate"
+        else:
+            severity_category = "severe"
+        
+        normalized["severity"] = severity_category
         
         return normalized
     

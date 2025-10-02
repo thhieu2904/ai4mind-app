@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     # Database - Read from SUPABASE_DATABASE_URL env variable
     DATABASE_URL: str = "postgresql://localhost/ai4mind"
     
+    # Supabase (for Storage and RLS)
+    SUPABASE_PROJECT_URL: str = ""
+    SUPABASE_ANON_KEY: str = ""  # For client-side access
+    SUPABASE_SERVICE_ROLE_KEY: str = ""  # For server-side admin access
+    
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
     REDIS_PASSWORD: str = ""

@@ -39,14 +39,18 @@ async def root():
         "message": "Voice Analysis Service",
         "version": settings.VERSION,
         "docs": "/docs",
-        "health": "/health"
+        "health": "/health",
+        "endpoints": {
+            "analyze": "/api/v1/voice-analysis/analyze",
+            "prompts": "/api/v1/voice-analysis/prompts"
+        }
     }
 
 
-# Import and include routers (will be added later)
-# from app.api.v1.endpoints import analyze, prompts
-# app.include_router(analyze.router, prefix=f"{settings.API_V1_PREFIX}/voice-analysis", tags=["voice-analysis"])
-# app.include_router(prompts.router, prefix=f"{settings.API_V1_PREFIX}/voice-analysis", tags=["prompts"])
+# Import and include routers
+from app.api.v1.endpoints import analyze
+
+app.include_router(analyze.router, prefix="/api/v1")
 
 
 if __name__ == "__main__":

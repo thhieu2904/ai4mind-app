@@ -278,13 +278,17 @@ class AudioProcessor:
             pitch_features["pitch_mean"]
         )
         
+        # Calculate duration
+        duration = len(audio) / sr
+        
         # Combine all features
         features = {
             **pitch_features,
             **energy_features,
             **speech_rate_features,
             **pause_features,
-            "voice_stability": voice_stability
+            "voice_stability": voice_stability,
+            "duration": float(duration)
         }
         
         # Optionally extract MFCCs
