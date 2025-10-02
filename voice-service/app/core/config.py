@@ -8,11 +8,11 @@ from typing import Optional
 class Settings(BaseSettings):
     """Application settings"""
     
-    # Database
+    # Database (REQUIRED)
     DATABASE_URL: str
     
-    # AI Service
-    AI_SERVICE_URL: str = "http://localhost:8000"
+    # AI Service (REQUIRED for production)
+    AI_SERVICE_URL: str  # No default - must be set via environment
     
     # Server
     HOST: str = "0.0.0.0"

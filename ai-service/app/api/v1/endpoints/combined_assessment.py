@@ -25,7 +25,10 @@ router = APIRouter()
 gemini_service = GeminiService()
 logger = logging.getLogger(__name__)
 
-VOICE_SERVICE_URL = settings.VOICE_SERVICE_URL or "http://localhost:8001"
+# Voice service URL - REQUIRED for production
+if not settings.VOICE_SERVICE_URL:
+    raise ValueError("VOICE_SERVICE_URL environment variable is required")
+VOICE_SERVICE_URL = settings.VOICE_SERVICE_URL
 
 
 def calculate_severity(total_score: int) -> str:
