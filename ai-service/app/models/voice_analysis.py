@@ -17,7 +17,13 @@ class VoiceAnalysis(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     student_id = Column(Integer, ForeignKey("students.id", ondelete="CASCADE"), nullable=False, index=True)
-    assessment_id = Column(Integer, ForeignKey("assessments.id", ondelete="SET NULL"), nullable=True, index=True)
+    assessment_id = Column(
+        Integer, 
+        ForeignKey("assessments.id", ondelete="CASCADE"), 
+        nullable=False,  # Changed: Every voice analysis must belong to an assessment
+        index=True,
+        comment="Required: Links voice analysis to its parent assessment"
+    )
     
     # Audio file info
     audio_file_path = Column(String(500), nullable=False)

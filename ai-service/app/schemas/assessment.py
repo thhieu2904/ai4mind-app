@@ -49,7 +49,7 @@ class AssessmentCreate(BaseModel):
 class AssessmentResponse(BaseModel):
     """Schema for assessment response"""
     id: int
-    user_id: int
+    student_id: int  # Changed from user_id to match model
     answers: List[int]
     total_score: int
     severity_level: str  # minimal, mild, moderate, severe
@@ -61,6 +61,9 @@ class AssessmentResponse(BaseModel):
     # Additional data
     functional_impairment: Optional[int] = None
     notes: Optional[str] = None
+    
+    # Voice analysis link (for combined assessment)
+    voice_analysis_id: Optional[int] = Field(None, description="ID of linked voice analysis (if submitted together)")
     
     # Timestamps
     created_at: datetime

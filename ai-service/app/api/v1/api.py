@@ -2,7 +2,7 @@
 API v1 router
 """
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, assessments, voice_analysis, students
+from app.api.v1.endpoints import auth, assessments, voice_analysis, students, combined_assessment
 
 api_router = APIRouter()
 
@@ -10,6 +10,7 @@ api_router = APIRouter()
 api_router.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 api_router.include_router(students.router, prefix="/students", tags=["Students"])
 api_router.include_router(assessments.router, prefix="/assessments", tags=["Assessments"])
+api_router.include_router(combined_assessment.router, prefix="/assessments", tags=["Combined Assessment"])  # New!
 api_router.include_router(voice_analysis.router, prefix="/voice-analysis", tags=["Voice Analysis"])
 
 # Add more routers here as we implement them
