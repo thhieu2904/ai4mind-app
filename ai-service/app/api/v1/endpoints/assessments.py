@@ -340,10 +340,10 @@ async def get_assessment(
     # Get severity info
     severity_info = get_severity_level(assessment.total_score)
     
-    # Build response dict manually to include user_id
+    # Build response dict manually to include student_id
     detail_dict = {
         "id": assessment.id,
-        "user_id": student.user_id,
+        "student_id": assessment.student_id,
         "answers": assessment.answers,
         "total_score": assessment.total_score,
         "severity_level": assessment.severity_level,
