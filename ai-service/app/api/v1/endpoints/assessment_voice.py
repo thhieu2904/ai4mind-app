@@ -87,18 +87,13 @@ async def add_voice_to_assessment(
     
     logger.info(f"Loaded assessment {assessment_id}: score={assessment.total_score}, severity={assessment.severity_level}")
     
-    # Check if voice analysis already exists for this assessment
-    existing_voice = db.query(VoiceAnalysis).filter(
+    # Allow multiple voice analyses for testing - remove duplicate check
+    existing_count = db.query(VoiceAnalysis).filter(
         VoiceAnalysis.assessment_id == assessment_id
-    ).first()
+    ).count()
     
-    if existing_voice:
-        logger.warning(f"Voice analysis already exists for assessment {assessment_id}")
-        raise HTTPException(
-            400, 
-            f"Voice analysis already exists for this assessment (voice_id={existing_voice.id}). "
-            "Please delete the old one first if you want to create a new recording."
-        )
+    if existing_count > 0:
+        logger.info(f"Found {existing_count} existing voice analysis(es) for assessment {assessment_id}, creating another one for testing")
     
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     # STEP 2: Process Voice Recording
@@ -208,9 +203,18 @@ async def add_voice_to_assessment(
     # STEP 4: Save VoiceAnalysis to Database (Linked to Assessment)
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     
-    # Parse recommendations if structured
-    if comprehensive_recommendations and isinstance(comprehensive_recommendations[0], dict):
-        comprehensive_recommendations = [rec.get("recommendation", str(rec)) for rec in comprehensive_recommendations]
+    # Parse recommendations if structured - handle both dict and string formats
+    if comprehensive_recommendations and len(comprehensive_recommendations) > 0:
+        try:
+            # Check if first item is dict, if so convert all
+            if isinstance(comprehensive_recommendations[0], dict):
+                comprehensive_recommendations = [
+                    rec.get("recommendation", str(rec)) if isinstance(rec, dict) else str(rec) 
+                    for rec in comprehensive_recommendations
+                ]
+        except (IndexError, AttributeError):
+            # Fallback: ensure all items are strings
+            comprehensive_recommendations = [str(rec) for rec in comprehensive_recommendations]
     
     try:
         voice_analysis = VoiceAnalysis(

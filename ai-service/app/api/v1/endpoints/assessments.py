@@ -187,7 +187,7 @@ async def list_assessments(
         student = db.query(Student).filter(Student.id == item.student_id).first()
         assessment_dict = {
             "id": item.id,
-            "user_id": student.user_id if student else 0,
+            "student_id": item.student_id,  # Fixed: Use student_id instead of user_id
             "answers": item.answers,
             "total_score": item.total_score,
             "severity_level": item.severity_level,

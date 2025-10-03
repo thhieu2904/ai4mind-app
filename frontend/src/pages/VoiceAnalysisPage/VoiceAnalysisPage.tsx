@@ -6,9 +6,17 @@ import api from "../../services/api";
 import "./VoiceAnalysisPage.css";
 
 interface LocationState {
-  assessmentId: number;
-  gad7Score: number;
-  gad7Severity: string;
+  assessmentId?: number;
+  gad7Score?: number;
+  gad7Severity?: string;
+}
+
+interface Assessment {
+  id: number;
+  total_score: number;
+  severity_level: string;
+  created_at: string;
+  analysis: string;
 }
 
 // Recording prompts in Vietnamese
@@ -44,9 +52,23 @@ const VoiceAnalysisPage: React.FC = () => {
   const location = useLocation();
   const { user } = useAuth();
 
-  // Get assessment data from navigation state
+  // Get assessment data from navigation state OR load from backend
   const state = location.state as LocationState;
-  const { assessmentId, gad7Score, gad7Severity } = state || {};
+  const [assessmentId, setAssessmentId] = useState<number | null>(
+    state?.assessmentId || null
+  );
+  const [gad7Score, setGad7Score] = useState<number>(state?.gad7Score || 0);
+  const [gad7Severity, setGad7Severity] = useState<string>(
+    state?.gad7Severity || ""
+  );
+
+  // Assessment selection state
+  const [availableAssessments, setAvailableAssessments] = useState<
+    Assessment[]
+  >([]);
+  const [loadingAssessments, setLoadingAssessments] = useState(true);
+  const [showAssessmentSelection, setShowAssessmentSelection] =
+    useState(!assessmentId);
 
   const [selectedLanguage, setSelectedLanguage] = useState("vi");
   const [userGender, setUserGender] = useState<string>("other"); // Auto-detect from profile
@@ -60,12 +82,18 @@ const VoiceAnalysisPage: React.FC = () => {
     (typeof RECORDING_PROMPTS)[0] | null
   >(null);
 
+  // All useRef hooks must be declared before any conditional logic
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const timerIntervalRef = useRef<number | null>(null); // Fixed: use number instead of NodeJS.Timeout
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // Load student profile to get gender
   useEffect(() => {
     const loadStudentProfile = async () => {
       try {
         if (user?.role === "student") {
-          const response = await api.get("/api/v1/students/profile");
+          const response = await api.get("/api/v1/students/me");
           const studentProfile = response.data;
           if (studentProfile.gender) {
             setUserGender(studentProfile.gender);
@@ -87,31 +115,88 @@ const VoiceAnalysisPage: React.FC = () => {
     loadStudentProfile();
   }, [user]);
 
-  // Validate navigation state
-  if (!assessmentId) {
+  // Load available assessments - simplified logic
+  useEffect(() => {
+    const loadAssessments = async () => {
+      try {
+        setLoadingAssessments(true);
+        const response = await api.get("/api/v1/assessments/");
+        const assessmentResponse = response.data;
+
+        // Backend returns AssessmentListResponse with items array
+        const assessments = assessmentResponse.items || [];
+        setAvailableAssessments(assessments);
+
+        // Simple logic: use latest assessment if available
+        if (assessments.length === 0) {
+          console.log(
+            "📝 No assessments found, user needs to complete GAD-7 first"
+          );
+          setShowAssessmentSelection(true); // Show "need GAD-7" message
+        } else {
+          // Auto-select latest assessment
+          const latestAssessment = assessments[0]; // Already sorted by created_at DESC
+          setAssessmentId(latestAssessment.id);
+          setGad7Score(latestAssessment.total_score);
+          setGad7Severity(latestAssessment.severity_level);
+          setShowAssessmentSelection(false); // Go directly to voice analysis
+          console.log(
+            `📋 Auto-selected latest assessment: ${latestAssessment.total_score}/21 (${latestAssessment.severity_level})`
+          );
+        }
+      } catch (error) {
+        console.error("❌ Failed to load assessments:", error);
+        setShowAssessmentSelection(true); // Show error state
+      } finally {
+        setLoadingAssessments(false);
+      }
+    };
+
+    if (user?.role === "student") {
+      loadAssessments();
+    }
+  }, [user]);
+
+  // Show simple "need GAD-7" message if no assessments
+  if (showAssessmentSelection) {
     return (
       <MainLayout>
         <div className="voice-analysis-container">
-          <div className="error-message">
-            <h2>❌ Lỗi</h2>
-            <p>Không tìm thấy thông tin đánh giá GAD-7.</p>
-            <p>Vui lòng thực hiện đánh giá GAD-7 trước khi ghi âm.</p>
+          <div className="voice-header">
             <button
-              onClick={() => navigate("/assessment")}
-              className="btn-primary"
+              className="back-button"
+              onClick={() => navigate("/dashboard")}
+              aria-label="Quay lại dashboard"
             >
-              Quay lại đánh giá GAD-7
+              ←
             </button>
+            <h1 className="voice-title">Phân tích giọng nói</h1>
+            <div className="header-spacer"></div>
           </div>
+
+          {loadingAssessments ? (
+            <div className="loading-message">
+              <p>🔄 Đang kiểm tra đánh giá GAD-7...</p>
+            </div>
+          ) : (
+            <div className="error-message">
+              <h2>📝 Cần đánh giá GAD-7 trước</h2>
+              <p>
+                Bạn cần thực hiện đánh giá GAD-7 trước khi ghi âm phân tích
+                giọng nói.
+              </p>
+              <button
+                onClick={() => navigate("/assessment")}
+                className="btn-primary"
+              >
+                Bắt đầu đánh giá GAD-7
+              </button>
+            </div>
+          )}
         </div>
       </MainLayout>
     );
   }
-
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleBackToDashboard = () => {
     navigate("/dashboard");
