@@ -115,10 +115,10 @@ async def submit_assessment(
     db.commit()
     db.refresh(assessment)
     
-    # Return response with user_id for frontend
+    # Return response with student_id (not user_id)
     assessment_dict = {
         "id": assessment.id,
-        "user_id": current_user.id,
+        "student_id": assessment.student_id,  # Use student_id from assessment
         "answers": assessment.answers,
         "total_score": assessment.total_score,
         "severity_level": assessment.severity_level,
@@ -187,7 +187,7 @@ async def list_assessments(
         student = db.query(Student).filter(Student.id == item.student_id).first()
         assessment_dict = {
             "id": item.id,
-            "user_id": student.user_id if student else 0,
+            "student_id": item.student_id,  # Fixed: Use student_id instead of user_id
             "answers": item.answers,
             "total_score": item.total_score,
             "severity_level": item.severity_level,

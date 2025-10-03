@@ -74,9 +74,22 @@ async def register(
     
     # Create role-specific profile
     if user_data.role == "student":
+        # Parse date_of_birth if provided
+        from datetime import datetime
+        date_of_birth_obj = None
+        if user_data.date_of_birth:
+            try:
+                date_of_birth_obj = datetime.strptime(user_data.date_of_birth, "%Y-%m-%d").date()
+            except ValueError:
+                pass  # Invalid date format, keep as None
+        
         student = Student(
             user_id=user.id,
             student_code=user_data.student_code,
+            date_of_birth=date_of_birth_obj,
+            gender=user_data.gender or 'prefer_not_to_say',
+            phone_number=user_data.phone,
+            address=user_data.address,
             university=user_data.university,
             major=user_data.major,
             year_of_study=user_data.year_of_study

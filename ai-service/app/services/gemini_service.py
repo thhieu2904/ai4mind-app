@@ -53,12 +53,12 @@ class GeminiService:
         except Exception as e:
             raise Exception(f"Gemini API error: {str(e)}")
     
-    async def analyze_gad7(self, answers: Dict[int, int], total_score: int) -> Dict[str, str]:
+    async def analyze_gad7(self, answers: List[Dict], total_score: int) -> Dict[str, any]:
         """
         Phân tích kết quả GAD-7 assessment
         
         Args:
-            answers: Dict of question_id: score (0-3)
+            answers: List of dicts with question, answer, score
             total_score: Total score (0-21)
         
         Returns:
@@ -167,25 +167,25 @@ Mỗi khuyến nghị nên là một câu hoàn chỉnh, thực tế và dễ th
                 "recommendations": ["Hãy tham khảo ý kiến chuyên gia tâm lý nếu cảm thấy cần thiết."]
             }
     
-    def _format_gad7_answers(self, answers: Dict[int, int]) -> str:
-        """Format GAD-7 answers for prompt"""
-        questions = {
-            1: "Cảm thấy lo lắng, bồn chồn hoặc căng thẳng",
-            2: "Không thể ngừng lo lắng hoặc kiểm soát sự lo lắng",
-            3: "Lo lắng quá nhiều về những việc khác nhau",
-            4: "Khó thư giãn",
-            5: "Bồn chồn đến mức khó ngồi yên",
-            6: "Dễ khó chịu hoặc cáu gắt",
-            7: "Cảm thấy sợ hãi như thể điều gì đó tồi tệ sắp xảy ra"
-        }
+    def _format_gad7_answers(self, answers: List[Dict]) -> str:
+        """
+        Format GAD-7 answers for prompt
         
-        score_labels = {0: "Không bao giờ", 1: "Vài ngày", 2: "Hơn một nửa", 3: "Gần như mỗi ngày"}
+        Args:
+            answers: List of dicts with 'question', 'answer', 'score'
+        
+        Returns:
+            Formatted string
+        """
+        if not answers:
+            return "No answers provided"
         
         result = []
-        for q_id, score in answers.items():
-            question = questions.get(q_id, f"Câu hỏi {q_id}")
-            label = score_labels.get(score, "N/A")
-            result.append(f"- {question}: {label} ({score} điểm)")
+        for item in answers:
+            question = item.get("question", "Unknown question")
+            answer = item.get("answer", "N/A")
+            score = item.get("score", 0)
+            result.append(f"- {question}: {answer} ({score} điểm)")
         
         return "\n".join(result)
     

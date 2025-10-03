@@ -180,8 +180,13 @@ class SecureStorage:
         # Sanitize filename (remove path traversal attempts)
         safe_filename = os.path.basename(filename)
         
-        # File path: {student_id}/{filename}
-        file_path = f"{student.id}/{safe_filename}"
+        # Create unique filename with timestamp to allow multiple uploads
+        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        name, ext = os.path.splitext(safe_filename)
+        unique_filename = f"{name}_{timestamp}{ext}"
+        
+        # File path: {student_id}/{unique_filename}
+        file_path = f"{student.id}/{unique_filename}"
         
         try:
             # Upload to Supabase Storage
@@ -191,7 +196,7 @@ class SecureStorage:
                 file_options={
                     "content-type": "audio/wav",
                     "cache-control": "3600",
-                    "upsert": "false"  # Don't overwrite existing files
+                    "upsert": "true"  # Allow overwrite for multiple test uploads
                 }
             )
         except Exception as e:
