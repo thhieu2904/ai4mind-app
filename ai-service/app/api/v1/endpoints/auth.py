@@ -83,6 +83,47 @@ async def register(
             except ValueError:
                 pass  # Invalid date format, keep as None
         
+        # Handle parent email (emergency contact)
+        emergency_contact_parent_id = None
+        if user_data.parent_email:
+            # Check if parent with this email already exists
+            parent_user = db.query(User).filter(
+                User.email == user_data.parent_email,
+                User.role == "parent"
+            ).first()
+            
+            if parent_user:
+                # Parent exists, get parent record
+                parent = db.query(Parent).filter(Parent.user_id == parent_user.id).first()
+                if parent:
+                    emergency_contact_parent_id = parent.id
+                else:
+                    # Parent user exists but no parent profile, create it
+                    new_parent = Parent(user_id=parent_user.id)
+                    db.add(new_parent)
+                    db.flush()
+                    emergency_contact_parent_id = new_parent.id
+            else:
+                # Parent doesn't exist, create new parent account
+                temp_password = "TempPass123!"  # TODO: Send email with reset link
+                parent_user = User(
+                    email=user_data.parent_email,
+                    hashed_password=get_password_hash(temp_password),
+                    full_name="Phụ huynh",  # Temporary, parent updates later
+                    role="parent",
+                    is_active=False,  # Inactive until parent verifies
+                    is_verified=False
+                )
+                db.add(parent_user)
+                db.flush()
+                
+                new_parent = Parent(user_id=parent_user.id)
+                db.add(new_parent)
+                db.flush()
+                emergency_contact_parent_id = new_parent.id
+                
+                # TODO: Send welcome email to parent
+        
         student = Student(
             user_id=user.id,
             student_code=user_data.student_code,
@@ -92,7 +133,9 @@ async def register(
             address=user_data.address,
             university=user_data.university,
             major=user_data.major,
-            year_of_study=user_data.year_of_study
+            education_level=user_data.education_level,
+            grade=user_data.grade,
+            emergency_contact_parent_id=emergency_contact_parent_id
         )
         db.add(student)
     
@@ -238,7 +281,8 @@ async def get_me(
                 "student_code": student.student_code,
                 "university": student.university,
                 "major": student.major,
-                "year_of_study": student.year_of_study
+                "education_level": student.education_level,
+                "grade": student.grade
             }
     
     elif current_user.role == "parent":

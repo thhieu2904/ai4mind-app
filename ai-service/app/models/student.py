@@ -24,17 +24,17 @@ class Student(Base):
     gender = Column(String(20), nullable=True, default='prefer_not_to_say')  # male, female, other, prefer_not_to_say
     
     # Academic info
-    university = Column(String(255), nullable=True)
+    university = Column(String(255), nullable=True)  # School/University name
     major = Column(String(255), nullable=True)
-    year_of_study = Column(Integer, nullable=True)  # Năm học (1, 2, 3, 4)
+    education_level = Column(String(50), nullable=True)  # high_school, undergraduate, graduate, other
+    grade = Column(String(50), nullable=True)  # Grade/Year: '10', '11', '12', '1'-'5', etc.
     
-    # Emergency contact
-    emergency_contact_name = Column(String(255), nullable=True)
-    emergency_contact_phone = Column(String(20), nullable=True)
-    emergency_contact_relationship = Column(String(100), nullable=True)
+    # Emergency contact - Foreign key to parents table
+    emergency_contact_parent_id = Column(Integer, ForeignKey("parents.id", ondelete="SET NULL"), nullable=True)
 
     # Relationships
     user = relationship("User", back_populates="student")
+    emergency_contact_parent = relationship("Parent", foreign_keys=[emergency_contact_parent_id], backref="emergency_contacts")
     assessments = relationship("Assessment", back_populates="student", cascade="all, delete-orphan")
     conversations = relationship("Conversation", back_populates="student", cascade="all, delete-orphan")
     parent_consents = relationship("ParentConsent", back_populates="student", cascade="all, delete-orphan")

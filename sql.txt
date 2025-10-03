@@ -81,13 +81,13 @@ CREATE TABLE public.students (
   address text,
   university character varying,
   major character varying,
-  year_of_study integer,
-  emergency_contact_name character varying,
-  emergency_contact_phone character varying,
-  emergency_contact_relationship character varying,
   gender character varying DEFAULT 'prefer_not_to_say'::character varying CHECK (gender::text = ANY (ARRAY['male'::character varying, 'female'::character varying, 'other'::character varying, 'prefer_not_to_say'::character varying]::text[])),
+  emergency_contact_parent_id integer,
+  education_level character varying CHECK (education_level::text = ANY (ARRAY['high_school'::character varying, 'undergraduate'::character varying, 'graduate'::character varying, 'other'::character varying]::text[])),
+  grade character varying,
   CONSTRAINT students_pkey PRIMARY KEY (id),
-  CONSTRAINT students_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+  CONSTRAINT students_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+  CONSTRAINT fk_students_emergency_contact_parent FOREIGN KEY (emergency_contact_parent_id) REFERENCES public.parents(id)
 );
 CREATE TABLE public.users (
   id integer NOT NULL DEFAULT nextval('users_id_seq'::regclass),
@@ -132,6 +132,8 @@ CREATE TABLE public.voice_analyses (
   normalized_features json,
   processing_status character varying NOT NULL DEFAULT 'pending'::character varying,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
+  comprehensive_analysis text,
+  comprehensive_recommendations jsonb,
   CONSTRAINT voice_analyses_pkey PRIMARY KEY (id),
   CONSTRAINT voice_analyses_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id),
   CONSTRAINT voice_analyses_assessment_id_fkey FOREIGN KEY (assessment_id) REFERENCES public.assessments(id)

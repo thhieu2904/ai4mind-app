@@ -23,10 +23,10 @@ export interface StudentProfile {
   address?: string;
   university?: string;
   major?: string;
-  year_of_study?: number;
-  emergency_contact_name?: string;
-  emergency_contact_phone?: string;
-  emergency_contact_relationship?: string;
+  education_level?: "high_school" | "undergraduate" | "graduate" | "other";
+  grade?: string;
+  emergency_contact_parent_id?: number;
+  parent_email?: string; // For display/edit
 }
 
 export interface ParentProfile {
@@ -45,6 +45,9 @@ export interface CounselorProfile {
 export interface StudentDetails extends StudentProfile {
   id: number;
   user_id: number;
+  email?: string; // From student.user relationship
+  full_name?: string; // From student.user relationship
+  created_at?: string; // Timestamp when student was created
 }
 
 export class UserService {
@@ -66,20 +69,21 @@ export class UserService {
 
   /**
    * Update user basic information
+   * @deprecated Use updateStudentProfile instead (handles both user and student data)
    */
   static async updateUser(data: {
     full_name?: string;
     phone?: string;
   }): Promise<UserProfile> {
-    const response = await api.put("/api/v1/auth/me", data);
-    return response.data;
+    // This endpoint doesn't exist - use updateStudentProfile instead
+    throw new Error("Use updateStudentProfile instead");
   }
 
   /**
-   * Update student profile
+   * Update student profile (includes user basic info like full_name, phone)
    */
   static async updateStudentProfile(
-    data: Partial<StudentProfile>
+    data: Partial<StudentProfile> & { full_name?: string }
   ): Promise<StudentDetails> {
     const response = await api.put("/api/v1/students/me", data);
     return response.data;

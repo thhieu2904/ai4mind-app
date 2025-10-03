@@ -12,6 +12,8 @@ import ResultsPage from "./pages/ResultsPage";
 import ComprehensiveResultsPage from "./pages/ComprehensiveResultsPage";
 import VoiceAnalysisPage from "./pages/VoiceAnalysisPage";
 import AssessmentHistoryPage from "./pages/AssessmentHistoryPage";
+import StatisticsPage from "./pages/StatisticsPage";
+import ProfilePage from "./pages/ProfilePage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -107,6 +109,24 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <AssessmentHistoryPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/statistics"
+                element={
+                  <ProtectedRoute>
+                    <StatisticsPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <ProfilePage />
                   </ProtectedRoute>
                 }
               />
