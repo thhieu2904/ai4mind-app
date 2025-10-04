@@ -1,12 +1,10 @@
-/**
- * Edit Profile Modal - Modal chỉnh sửa thông tin cá nhân
- */
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import type {
   UserProfile,
   StudentProfile,
 } from "../../../services/userService";
+import AlertModal, { AlertType } from "../../../components/AlertModal";
 import "./EditProfileModal.css";
 
 interface EditProfileFormData {
@@ -43,8 +41,29 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<EditProfileFormData>();
+
+  const [alertModal, setAlertModal] = useState<{
+    open: boolean;
+    type: AlertType;
+    title: string;
+    message: string;
+  }>({
+    open: false,
+    type: "info",
+    title: "",
+    message: "",
+  });
+
+  const showAlert = (type: AlertType, title: string, message: string) => {
+    setAlertModal({ open: true, type, title, message });
+  };
+
+  const closeAlert = () => {
+    setAlertModal({ ...alertModal, open: false });
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -65,10 +84,50 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
   const onSubmit = async (data: EditProfileFormData) => {
     try {
+      // Frontend validation for parent email
+      if (data.parent_email) {
+        const parentEmail = data.parent_email.trim().toLowerCase();
+
+        // Check if using own email
+        if (parentEmail === user.email.toLowerCase()) {
+          showAlert(
+            "error",
+            "Email không hợp lệ",
+            "Không thể sử dụng email của chính bạn làm email phụ huynh. Vui lòng nhập email khác."
+          );
+          return;
+        }
+
+        // Validate email format
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!emailRegex.test(parentEmail)) {
+          showAlert(
+            "error",
+            "Email không hợp lệ",
+            "Vui lòng nhập địa chỉ email hợp lệ cho phụ huynh."
+          );
+          return;
+        }
+
+        data.parent_email = parentEmail; // Normalize email
+      }
+
       await onSave(data);
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving profile:", error);
+
+      // Handle backend validation errors
+      if (error.response?.data?.detail) {
+        const errorMessage = error.response.data.detail;
+        showAlert("error", "Không thể cập nhật", errorMessage);
+      } else {
+        showAlert(
+          "error",
+          "Lỗi",
+          "Đã xảy ra lỗi khi cập nhật thông tin. Vui lòng thử lại."
+        );
+      }
     }
   };
 
@@ -263,6 +322,16 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
           </div>
         </form>
       </div>
+
+      {/* Alert Modal */}
+      <AlertModal
+        open={alertModal.open}
+        onClose={closeAlert}
+        type={alertModal.type}
+        title={alertModal.title}
+        message={alertModal.message}
+        confirmText="Đã hiểu"
+      />
     </div>
   );
 };

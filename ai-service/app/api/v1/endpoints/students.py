@@ -102,7 +102,24 @@ def update_current_student_profile(
     
     # Handle parent email update (if provided in body)
     if student_data.parent_email:
-        parent_email = student_data.parent_email
+        parent_email = student_data.parent_email.strip().lower()
+        
+        # Validate email format
+        import re
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, parent_email):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email phụ huynh không hợp lệ"
+            )
+        
+        # Check if student is trying to use their own email
+        if parent_email == current_student.user.email.lower():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Không thể sử dụng email của chính bạn làm email phụ huynh"
+            )
+        
         print(f"[DEBUG] Updating parent email to: {parent_email}")  # DEBUG
         
         # Check if parent with this email already exists
@@ -122,7 +139,23 @@ def update_current_student_profile(
                 )
             update_data['emergency_contact_parent_id'] = parent.id
         else:
-            # Parent doesn't exist, create new parent account
+            # Check if email already exists with different role (student, admin, etc.)
+            existing_user = db.query(User).filter(User.email == parent_email).first()
+            if existing_user:
+                print(f"[DEBUG] Email exists with role: {existing_user.role}")  # DEBUG
+                role_names = {
+                    "student": "học sinh",
+                    "parent": "phụ huynh",
+                    "admin": "quản trị viên",
+                    "counselor": "tư vấn viên"
+                }
+                role_vn = role_names.get(existing_user.role.value if hasattr(existing_user.role, 'value') else existing_user.role, existing_user.role)
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Email {parent_email} đã được đăng ký với vai trò '{role_vn}'. Vui lòng sử dụng email khác cho phụ huynh."
+                )
+            
+            # Create new parent account
             print(f"[DEBUG] Creating new parent account for: {parent_email}")  # DEBUG
             from app.core.security import get_password_hash
             

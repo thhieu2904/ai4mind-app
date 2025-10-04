@@ -98,7 +98,20 @@ const RegisterPage: React.FC = () => {
     setLoading(true);
 
     try {
-      await register(formData);
+      // Clean up empty fields before sending to backend
+      const cleanedData = { ...formData };
+
+      // Remove empty parent_email to avoid validation error
+      if (!cleanedData.parent_email || cleanedData.parent_email.trim() === "") {
+        delete cleanedData.parent_email;
+      }
+
+      // Remove empty optional fields
+      if (!cleanedData.student_code || cleanedData.student_code.trim() === "") {
+        delete cleanedData.student_code;
+      }
+
+      await register(cleanedData);
       navigate("/dashboard");
     } catch (err: any) {
       // Parse backend validation errors

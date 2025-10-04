@@ -71,6 +71,34 @@ class StudentUpdate(BaseModel):
     # Emergency contact
     emergency_contact_parent_id: Optional[int] = Field(None, description="Parent ID for emergency contact")
     parent_email: Optional[str] = Field(None, description="Parent email for emergency contact")
+    
+    @validator('full_name')
+    def validate_full_name(cls, v):
+        if v is not None and len(v.strip()) < 2:
+            raise ValueError("Họ và tên phải có ít nhất 2 ký tự")
+        return v.strip() if v else v
+    
+    @validator('phone_number')
+    def validate_phone_number(cls, v):
+        if v is not None and v.strip():
+            # Basic phone validation (Vietnamese format)
+            import re
+            phone = v.strip()
+            if not re.match(r'^[0-9+\-\(\)\s]{8,15}$', phone):
+                raise ValueError("Số điện thoại không hợp lệ")
+            return phone
+        return None if not v or not v.strip() else v
+    
+    @validator('parent_email')
+    def validate_parent_email(cls, v):
+        if v is not None and v.strip():
+            # Email validation
+            import re
+            email = v.strip().lower()
+            if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
+                raise ValueError("Email phụ huynh không hợp lệ")
+            return email
+        return None if not v or not v.strip() else v
 
 
 class StudentResponse(StudentBase):
