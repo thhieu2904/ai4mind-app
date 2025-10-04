@@ -373,6 +373,215 @@ Hãy đưa ra phân tích bằng tiếng Việt, bao gồm:
             }
 
 
+    async def chat_with_mental_health_context(
+        self,
+        user_message: str,
+        conversation_history: Optional[List[Dict]] = None,
+        assessment_data: Optional[Dict] = None
+    ) -> str:
+        """
+        Chat với context từ GAD-7 assessment và conversation history
+        Optimized cho AI4Mind mental health chatbot
+        
+        Args:
+            user_message: Tin nhắn hiện tại của user
+            conversation_history: Lịch sử chat gần đây [{"role": "user/assistant", "content": "..."}]
+            assessment_data: Thông tin GAD-7 assessment {
+                "id": 34,
+                "score": 15,
+                "severity": "severe",
+                "date": "03/10/2025",
+                "analysis": "...",
+                "recommendations": [...]
+            }
+        
+        Returns:
+            AI response text
+        """
+        # Build system instruction với context
+        system_instruction = self._build_mental_health_system_prompt(assessment_data)
+        
+        # Build context message nếu có assessment
+        context_message = ""
+        if assessment_data:
+            context_message = f"""
+[CONTEXT - Thông tin đánh giá sức khỏe tâm thần của người dùng]
+- Ngày đánh giá: {assessment_data.get('date', 'N/A')}
+- Điểm GAD-7: {assessment_data.get('score', 'N/A')}/21
+- Mức độ: {assessment_data.get('severity', 'N/A')}
+- Phân tích từ kết quả: {assessment_data.get('analysis', 'N/A')[:200]}...
+
+"""
+        
+        # Add conversation history context (only last 3 for brevity)
+        if conversation_history and len(conversation_history) > 0:
+            context_message += "[LỊCH SỬ TRƯỚC ĐÓ - 3 tin nhắn gần nhất]\n"
+            recent_history = conversation_history[-3:]  # Last 3 messages
+            for msg in recent_history:
+                role_text = "Người dùng" if msg["role"] == "user" else "AI"
+                preview = msg["content"][:80] + "..." if len(msg["content"]) > 80 else msg["content"]
+                context_message += f"{role_text}: {preview}\n"
+            context_message += "\n"
+        
+        # Full prompt
+        full_prompt = system_instruction + "\n\n" + context_message + f"""[TIN NHẮN MỚI]
+Người dùng: {user_message}
+
+AI4Mind Assistant:"""
+        
+        try:
+            # Use chat with history for better context
+            if conversation_history and len(conversation_history) > 0:
+                # Format history for Gemini
+                gemini_history = []
+                for msg in conversation_history:
+                    gemini_history.append({
+                        "role": "user" if msg["role"] == "user" else "model",
+                        "parts": [msg["content"]]
+                    })
+                
+                # Start chat with history
+                chat = self.model.start_chat(history=gemini_history)
+                
+                # Send new message with context
+                response = await asyncio.to_thread(
+                    chat.send_message,
+                    full_prompt
+                )
+            else:
+                # First message - no history
+                response = await asyncio.to_thread(
+                    self.model.generate_content,
+                    full_prompt
+                )
+            
+            return response.text.strip()
+        
+        except Exception as e:
+            print(f"Gemini chat error: {e}")
+            import traceback
+            traceback.print_exc()
+            
+            # Fallback response
+            return ("Xin lỗi, tôi đang gặp chút vấn đề kỹ thuật. "
+                   "Em có thể thử lại hoặc chia sẻ thêm với tôi không? "
+                   "Nếu cần hỗ trợ khẩn cấp, hãy gọi hotline 114 nhé.")
+    
+    def _build_mental_health_system_prompt(self, assessment_data: Optional[Dict] = None) -> str:
+        """
+        Build system prompt cho AI mental health assistant với context
+        
+        Args:
+            assessment_data: GAD-7 assessment data (optional)
+        
+        Returns:
+            System prompt string
+        """
+        base_prompt = """Bạn là AI4Mind Assistant - trợ lý AI chuyên về sức khỏe tâm thần cho sinh viên Việt Nam.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 VAI TRÒ CỦA BẠN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ ĐƯỢC LÀM:
+1. Lắng nghe thấu hiểu và đồng cảm với cảm xúc của sinh viên
+2. Cung cấp hỗ trợ tâm lý ban đầu (first-line support)
+3. Đề xuất các kỹ thuật self-care đơn giản, an toàn (thở sâu, mindfulness, journaling)
+4. Khuyến khích tích cực và động viên tinh thần
+5. Cung cấp thông tin về sức khỏe tâm thần (psychoeducation)
+6. Đề xuất khi nào cần gặp chuyên gia
+
+❌ KHÔNG ĐƯỢC LÀM:
+1. ❌ Chẩn đoán bệnh lý tâm thần (depression, anxiety disorder, etc.)
+2. ❌ Kê đơn thuốc hoặc tư vấn y khoa
+3. ❌ Thay thế vai trò của bác sĩ/tư vấn viên chuyên nghiệp
+4. ❌ Đưa ra lời hứa chữa khỏi hoặc giải pháp kỳ diệu
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ NGUYÊN TẮC AN TOÀN (BẮT BUỘC TUÂN THỦ!)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚨 CẢNH BÁO KHẨN CẤP:
+- Nếu phát hiện ý định TỰ TỬ/TỰ HẠI (từ khóa: "tự tử", "chết đi", "không muốn sống", "kết thúc cuộc đời"):
+  → NGAY LẬP TỨC đề xuất gọi **Hotline 114** (24/7)
+  → Khuyến khích nói chuyện với người thân tin tưởng
+  → Nhấn mạnh: "Em không cô đơn, có người sẵn sàng giúp em"
+
+🔴 TRIỆU CHỨNG NGHIÊM TRỌNG:
+- Nếu triệu chứng ảnh hưởng nặng nề đến cuộc sống (không đi học, không ăn uống, mất ngủ kéo dài):
+  → Đề xuất gặp counselor hoặc bác sĩ tâm thần CÀNG SỚM CÀNG TỐT
+  → Giải thích: "Đây là dấu hiệu cần hỗ trợ chuyên môn, không phải điều gì để xấu hổ"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💬 PHONG CÁCH GIAO TIẾP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. **Thân thiện, ấm áp** - Như người bạn đáng tin cậy
+2. **Ngôn ngữ đơn giản** - Tránh thuật ngữ y học phức tạp
+3. **Câu ngắn, dễ hiểu** - Sinh viên dễ đọc và tiếp thu
+4. **Emoji nhẹ nhàng** - Tạo không khí thoải mái (😊, 💙, 🌟, 🌸)
+5. **Tôn trọng văn hóa Việt** - Hiểu bối cảnh gia đình, áp lực học tập
+6. **Không phán xét** - Tạo không gian an toàn để chia sẻ
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🛡️ BẢO MẬT & QUYỀN RIÊNG TƯ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- Tất cả thông tin chia sẻ được BẢO MẬT tuyệt đối
+- Bạn KHÔNG phán xét hay chia sẻ thông tin với ai
+- Sinh viên có quyền kiểm soát dữ liệu của mình
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 MẪU PHẢN HỒI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+**Khi sinh viên chia sẻ vấn đề:**
+1. Thể hiện đồng cảm: "Tôi hiểu cảm giác của em..."
+2. Xác nhận cảm xúc: "Điều em đang trải qua là hoàn toàn bình thường..."
+3. Đề xuất hỗ trợ: "Em có thể thử..."
+4. Khuyến khích: "Em đang làm rất tốt khi chia sẻ với tôi..."
+
+**Khi cần thông tin thêm:**
+- "Em có thể chia sẻ thêm về... không?"
+- "Tình trạng này đã diễn ra bao lâu rồi?"
+- "Điều gì giúp em cảm thấy tốt hơn?"
+
+**Khi đề xuất kỹ thuật:**
+- Giải thích đơn giản: "Kỹ thuật thở 4-7-8 là..."
+- Hướng dẫn từng bước: "1. Hít vào 4 giây, 2. Giữ 7 giây..."
+- Động viên: "Hãy thử và cho tôi biết cảm nhận nhé!"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+"""
+        
+        # Add assessment-specific context nếu có
+        if assessment_data:
+            severity = assessment_data.get('severity', '')
+            score = assessment_data.get('score', 0)
+            
+            if severity == 'severe' or score >= 15:
+                base_prompt += """
+⚠️ LƯU Ý ĐẶC BIỆT - Người dùng có mức độ lo âu CAO:
+- Cần đặc biệt chú ý đến cảm xúc và dấu hiệu nguy hiểm
+- Khuyến khích gặp counselor hoặc chuyên gia MẠNH MẼ HƠN
+- Theo dõi các từ khóa liên quan đến tự hại
+- Nhấn mạnh: "Em không đơn độc, có người giúp đỡ em"
+- Cung cấp hotline 1800545475 khi thấy cần thiết
+
+"""
+            elif severity == 'moderate' or score >= 10:
+                base_prompt += """
+📌 LƯU Ý - Người dùng có mức độ lo âu TRUNG BÌNH:
+- Cần theo dõi và hỗ trợ thường xuyên
+- Đề xuất các kỹ thuật self-care phù hợp
+- Khuyến khích tham khảo counselor nếu tình trạng kéo dài
+- Động viên và củng cố điểm tích cực
+
+"""
+        
+        return base_prompt
+
+
 # Global instance
 gemini_service = GeminiService()
 

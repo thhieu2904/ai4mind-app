@@ -69,9 +69,6 @@ const UserInfoCard: React.FC<UserInfoCardProps> = ({
     <div className="user-info-card">
       <div className="card-header">
         <h3 className="card-title">Thông tin cá nhân</h3>
-        <button className="edit-btn" onClick={onEdit}>
-          ✏️ Chỉnh sửa
-        </button>
       </div>
 
       <div className="card-content">
@@ -131,6 +128,9 @@ const UserInfoCard: React.FC<UserInfoCardProps> = ({
               <span className="info-value">{studentProfile.address}</span>
             </div>
           )}
+          <button className="edit-btn" onClick={onEdit}>
+            ✏️ Chỉnh sửa
+          </button>
         </div>
 
         {/* Account Status */}

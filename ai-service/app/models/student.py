@@ -39,6 +39,7 @@ class Student(Base):
     conversations = relationship("Conversation", back_populates="student", cascade="all, delete-orphan")
     parent_consents = relationship("ParentConsent", back_populates="student", cascade="all, delete-orphan")
     voice_analyses = relationship("VoiceAnalysis", back_populates="student", cascade="all, delete-orphan")
+    ai_conversations = relationship("AIConversation", back_populates="student", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Student(id={self.id}, student_code={self.student_code})>"
