@@ -15,6 +15,7 @@ import AssessmentHistoryPage from "./pages/AssessmentHistoryPage";
 import StatisticsPage from "./pages/StatisticsPage";
 import ProfilePage from "./pages/ProfilePage";
 import AIChatPage from "./pages/AIChatPage/AIChatPage";
+import MedicalCentersPage from "./pages/MedicalCentersPage/MedicalCentersPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -137,6 +138,15 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <AIChatPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/medical-centers"
+                element={
+                  <ProtectedRoute>
+                    <MedicalCentersPage />
                   </ProtectedRoute>
                 }
               />
