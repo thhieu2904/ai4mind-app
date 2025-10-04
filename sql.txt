@@ -1,6 +1,29 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
 
+CREATE TABLE public.ai_conversations (
+  id bigint NOT NULL DEFAULT nextval('ai_conversations_id_seq'::regclass),
+  student_id bigint NOT NULL,
+  latest_assessment_id bigint,
+  title character varying NOT NULL DEFAULT 'Chat với AI'::character varying,
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  last_message_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT ai_conversations_pkey PRIMARY KEY (id),
+  CONSTRAINT ai_conversations_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id),
+  CONSTRAINT ai_conversations_latest_assessment_id_fkey FOREIGN KEY (latest_assessment_id) REFERENCES public.assessments(id)
+);
+CREATE TABLE public.ai_messages (
+  id bigint NOT NULL DEFAULT nextval('ai_messages_id_seq'::regclass),
+  conversation_id bigint NOT NULL,
+  role character varying NOT NULL CHECK (role::text = ANY (ARRAY['user'::character varying, 'assistant'::character varying]::text[])),
+  content text NOT NULL,
+  related_assessment_id bigint,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT ai_messages_pkey PRIMARY KEY (id),
+  CONSTRAINT ai_messages_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES public.ai_conversations(id),
+  CONSTRAINT ai_messages_related_assessment_id_fkey FOREIGN KEY (related_assessment_id) REFERENCES public.assessments(id)
+);
 CREATE TABLE public.alembic_version (
   version_num character varying NOT NULL,
   CONSTRAINT alembic_version_pkey PRIMARY KEY (version_num)
@@ -42,6 +65,23 @@ CREATE TABLE public.counselors (
   is_available boolean,
   CONSTRAINT counselors_pkey PRIMARY KEY (id),
   CONSTRAINT counselors_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.medical_centers (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name character varying NOT NULL,
+  address text NOT NULL,
+  latitude numeric NOT NULL,
+  longitude numeric NOT NULL,
+  phone character varying,
+  email character varying,
+  website character varying,
+  services ARRAY DEFAULT ARRAY[]::text[],
+  opening_hours jsonb DEFAULT '{}'::jsonb,
+  description text,
+  image_url text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT medical_centers_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.messages (
   id integer NOT NULL DEFAULT nextval('messages_id_seq'::regclass),

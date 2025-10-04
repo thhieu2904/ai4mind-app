@@ -16,6 +16,9 @@ import StatisticsPage from "./pages/StatisticsPage";
 import ProfilePage from "./pages/ProfilePage";
 import AIChatPage from "./pages/AIChatPage/AIChatPage";
 import MedicalCentersPage from "./pages/MedicalCentersPage/MedicalCentersPage";
+import CounselorListPage from "./pages/CounselorListPage";
+import CounselorChatPage from "./pages/CounselorChatPage";
+import SupportHubPage from "./pages/SupportHubPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -143,10 +146,37 @@ function App() {
               />
 
               <Route
+                path="/support-hub"
+                element={
+                  <ProtectedRoute>
+                    <SupportHubPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
                 path="/medical-centers"
                 element={
                   <ProtectedRoute>
                     <MedicalCentersPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/counselor-list"
+                element={
+                  <ProtectedRoute>
+                    <CounselorListPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/counselor-chat/:conversationId"
+                element={
+                  <ProtectedRoute>
+                    <CounselorChatPage />
                   </ProtectedRoute>
                 }
               />
