@@ -10,7 +10,7 @@ from fastapi import HTTPException, status
 
 from app.models.counselor_chat import CounselorConversation, CounselorMessage
 from app.models.counselor import Counselor
-from app.models.user import User
+from app.models.user import User, UserRole
 
 
 class CounselorChatService:
@@ -150,14 +150,14 @@ class CounselorChatService:
             )
         
         # Verify permission
-        if user_role == "student":
+        if user_role == UserRole.STUDENT.value or user_role == UserRole.STUDENT:
             # Student chỉ xem conversation của mình
             if conversation.student.user_id != user_id:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="You don't have permission to view this conversation"
                 )
-        elif user_role == "counselor":
+        elif user_role == UserRole.COUNSELOR.value or user_role == UserRole.COUNSELOR:
             # Counselor chỉ xem conversation của mình
             if conversation.counselor.user_id != user_id:
                 raise HTTPException(
@@ -325,7 +325,7 @@ class CounselorChatService:
         ).first()
         
         # Verify permission (chỉ receiver mới mark as read)
-        if user_role == "student":
+        if user_role == UserRole.STUDENT.value or user_role == UserRole.STUDENT:
             # Student chỉ mark read message từ counselor
             from app.models.student import Student
             student_record = self.db.query(Student).filter(Student.user_id == user_id).first()
@@ -339,7 +339,7 @@ class CounselorChatService:
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="You cannot mark your own message as read"
                 )
-        elif user_role == "counselor":
+        elif user_role == UserRole.COUNSELOR.value or user_role == UserRole.COUNSELOR:
             # Counselor chỉ mark read message từ student
             counselor_record = self.db.query(Counselor).filter(Counselor.user_id == user_id).first()
             if not counselor_record or counselor_record.id != conversation.counselor_id:
@@ -388,7 +388,7 @@ class CounselorChatService:
             )
         
         # Verify permission
-        if user_role == "student":
+        if user_role == UserRole.STUDENT.value or user_role == UserRole.STUDENT:
             from app.models.student import Student
             student_record = self.db.query(Student).filter(Student.user_id == user_id).first()
             if not student_record or student_record.id != conversation.student_id:
@@ -398,7 +398,7 @@ class CounselorChatService:
                 )
             # Mark counselor messages as read
             sender_type_filter = "counselor"
-        elif user_role == "counselor":
+        elif user_role == UserRole.COUNSELOR.value or user_role == UserRole.COUNSELOR:
             counselor_record = self.db.query(Counselor).filter(Counselor.user_id == user_id).first()
             if not counselor_record or counselor_record.id != conversation.counselor_id:
                 raise HTTPException(
@@ -444,7 +444,7 @@ class CounselorChatService:
             int: Số unread messages
         """
         # Student đếm messages từ counselor, counselor đếm messages từ student
-        sender_type = "counselor" if user_role == "student" else "student"
+        sender_type = "counselor" if (user_role == UserRole.STUDENT.value or user_role == UserRole.STUDENT) else "student"
         
         count = (
             self.db.query(func.count(CounselorMessage.id))

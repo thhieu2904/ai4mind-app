@@ -18,7 +18,7 @@ from app.schemas.assessment import (
     AssessmentStats,
     AssessmentListResponse
 )
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.models.student import Student
 from app.models.assessment import Assessment
 from app.services.gemini_service import GeminiService
@@ -150,7 +150,10 @@ async def list_assessments(
     query = db.query(Assessment)
     
     # Filter based on role
-    if current_user.role == "student":
+    print(f"[DEBUG] User role: {current_user.role}, User ID: {current_user.id}, Email: {current_user.email}")
+    print(f"[DEBUG] Role type: {type(current_user.role)}, Role value: {current_user.role.value if hasattr(current_user.role, 'value') else current_user.role}")
+    
+    if current_user.role == UserRole.STUDENT:
         student = db.query(Student).filter(Student.user_id == current_user.id).first()
         if not student:
             raise HTTPException(
@@ -158,13 +161,14 @@ async def list_assessments(
                 detail="Student profile not found"
             )
         query = query.filter(Assessment.student_id == student.id)
+        print(f"[DEBUG] Filtered by student_id: {student.id}")
     
-    elif current_user.role == "parent":
+    elif current_user.role == UserRole.PARENT:
         # TODO: Filter by children with consent
         # For now, return empty list
         query = query.filter(Assessment.id == -1)
     
-    elif current_user.role == "counselor":
+    elif current_user.role == UserRole.COUNSELOR:
         # TODO: Filter by assigned students
         # For now, return empty list
         query = query.filter(Assessment.id == -1)
@@ -317,7 +321,7 @@ async def get_assessment(
         )
     
     # Students can only see their own
-    if current_user.role == "student" and student.user_id != current_user.id:
+    if current_user.role == UserRole.STUDENT and student.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only view your own assessments"

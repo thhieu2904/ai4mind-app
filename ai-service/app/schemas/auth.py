@@ -16,7 +16,7 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     """Schema for user registration"""
     password: str = Field(..., min_length=8, max_length=100)
-    role: str = Field(..., pattern="^(student|parent|counselor|admin)$")
+    role: str = Field(..., pattern="^(student|parent|counselor|admin|STUDENT|PARENT|COUNSELOR|ADMIN)$")
     
     # Additional fields for specific roles
     phone: Optional[str] = Field(None, max_length=20)
@@ -52,6 +52,11 @@ class UserCreate(UserBase):
             raise ValueError('Password must contain at least one number')
         return v
     
+    @validator('role')
+    def validate_role(cls, v):
+        """Normalize role to UPPERCASE for database consistency"""
+        return v.upper()
+    
     @validator('student_code')
     def validate_student_code(cls, v, values):
         """Validate student code format if provided"""
@@ -64,7 +69,8 @@ class UserCreate(UserBase):
     @validator('license_number')
     def validate_license_number(cls, v, values):
         """Validate license number is required for counselor role"""
-        if values.get('role') == 'counselor' and not v:
+        role = values.get('role', '').upper()
+        if role == 'COUNSELOR' and not v:
             raise ValueError('License number is required for counselor role')
         return v
 

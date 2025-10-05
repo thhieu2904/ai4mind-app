@@ -3,6 +3,7 @@
  */
 import React, { useState, useEffect } from "react";
 import MainLayout from "../../components/layout/MainLayout";
+import PageHeaderCard from "../../components/common/PageHeaderCard";
 import OverviewCards from "./components/OverviewCards";
 import ScoreTrendChart from "./components/ScoreTrendChart";
 import SeverityDistributionChart from "./components/SeverityDistributionChart";
@@ -101,15 +102,27 @@ const StatisticsPage: React.FC = () => {
   return (
     <MainLayout>
       <div className="statistics-page">
-        {/* Header */}
-        <div className="page-header">
-          <div className="header-content">
-            <h1 className="page-title">Thống kê & Phân tích</h1>
-            <p className="page-subtitle">
-              Theo dõi tiến trình và xu hướng sức khỏe tâm lý của bạn
-            </p>
-          </div>
-        </div>
+        {/* Page Header */}
+        <PageHeaderCard
+          icon="📊"
+          title="Thống kê & Phân tích"
+          subtitle="Theo dõi tiến trình sức khỏe tâm lý"
+          description={
+            <div className="statistics-header-info">
+              <span className="info-item">
+                📈 Dữ liệu từ các bài đánh giá GAD-7 của bạn
+              </span>
+              {stats && stats.total_assessments > 0 && (
+                <span className="info-item">
+                  📋 Tổng số: <strong>{stats.total_assessments}</strong> lần
+                  đánh giá
+                </span>
+              )}
+            </div>
+          }
+          variant="primary"
+          gradient
+        />
 
         {/* Content */}
         <div className="page-content">

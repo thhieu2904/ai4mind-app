@@ -3,6 +3,7 @@
  */
 import React, { useState, useEffect } from "react";
 import MainLayout from "../../components/layout/MainLayout";
+import PageHeaderCard from "../../components/common/PageHeaderCard";
 import UserInfoCard from "./components/UserInfoCard";
 import AcademicInfoCard from "./components/AcademicInfoCard";
 import ActivitySummaryCard from "./components/ActivitySummaryCard";
@@ -137,15 +138,45 @@ const ProfilePage: React.FC = () => {
   return (
     <MainLayout>
       <div className="profile-page">
-        {/* Header */}
-        <div className="page-header">
-          <div className="header-content">
-            <h1 className="page-title">Thông tin cá nhân</h1>
-            <p className="page-subtitle">
-              Quản lý thông tin và cài đặt tài khoản của bạn
-            </p>
-          </div>
-        </div>
+        {/* Page Header */}
+        <PageHeaderCard
+          icon="👤"
+          title="Thông tin cá nhân"
+          subtitle={user ? `Xin chào, ${user.full_name}` : "Quản lý hồ sơ"}
+          description={
+            <div className="profile-header-info">
+              <span className="info-item">
+                📧 {user?.email || "Đang tải..."}
+              </span>
+              {studentProfile && (
+                <>
+                  {studentProfile.university && (
+                    <span className="info-item">
+                      🎓 {studentProfile.university}
+                    </span>
+                  )}
+                  {studentProfile.major && (
+                    <span className="info-item">📚 {studentProfile.major}</span>
+                  )}
+                </>
+              )}
+            </div>
+          }
+          actions={
+            !loading &&
+            user && (
+              <button
+                onClick={handleEditProfile}
+                className="btn btn-primary"
+                style={{ padding: "0.75rem 1.5rem" }}
+              >
+                ✏️ Chỉnh sửa
+              </button>
+            )
+          }
+          variant="primary"
+          gradient
+        />
 
         {/* Content */}
         <div className="page-content">

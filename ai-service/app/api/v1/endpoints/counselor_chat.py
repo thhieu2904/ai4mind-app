@@ -8,7 +8,7 @@ from typing import List
 
 from app.core.database import get_db
 from app.core.security import get_current_user
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.models.student import Student
 from app.models.counselor import Counselor
 from app.schemas.counselor_chat import (
@@ -242,10 +242,10 @@ async def list_my_conversations(
     try:
         chat_service = CounselorChatService(db)
         
-        if current_user.role == "student":
+        if current_user.role == UserRole.STUDENT:
             student = get_student_from_user(current_user, db)
             conversations = chat_service.get_conversations_for_student(student.id)
-        elif current_user.role == "counselor":
+        elif current_user.role == UserRole.COUNSELOR:
             # TODO: Implement get_conversations_for_counselor
             raise HTTPException(
                 status_code=status.HTTP_501_NOT_IMPLEMENTED,
@@ -306,9 +306,9 @@ async def send_message(
         chat_service = CounselorChatService(db)
         
         # Determine sender_type from user role
-        if current_user.role == "student":
+        if current_user.role == UserRole.STUDENT:
             sender_type = "student"
-        elif current_user.role == "counselor":
+        elif current_user.role == UserRole.COUNSELOR:
             sender_type = "counselor"
         else:
             raise HTTPException(

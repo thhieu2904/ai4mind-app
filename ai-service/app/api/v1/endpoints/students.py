@@ -10,7 +10,7 @@ from app.core.database import get_db
 from app.api.dependencies import get_current_user_student, get_current_active_user, check_student_access
 from app.models.student import Student
 from app.models.parent import Parent
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.student import StudentResponse, StudentUpdate
 from app.schemas.auth import UserCreate
 
@@ -125,7 +125,7 @@ def update_current_student_profile(
         # Check if parent with this email already exists
         parent_user = db.query(User).filter(
             User.email == parent_email,
-            User.role == "parent"
+            User.role == UserRole.PARENT
         ).first()
         
         if parent_user:

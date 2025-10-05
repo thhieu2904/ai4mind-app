@@ -1,7 +1,8 @@
 /**
- * Overview Cards - Hiển thị thống kê tổng quan
+ * Overview Cards - Hiển thị thống kê tổng quan (Using InfoCard)
  */
 import React from "react";
+import InfoCard from "../../../components/common/InfoCard";
 import "./OverviewCards.css";
 
 interface OverviewCardsProps {
@@ -69,16 +70,16 @@ const OverviewCards: React.FC<OverviewCardsProps> = ({
   return (
     <div className="overview-cards">
       {/* Total Assessments */}
-      <div className="overview-card card-primary">
+      <InfoCard variant="secondary" className="overview-card-item">
         <div className="card-icon">📊</div>
         <div className="card-content">
           <div className="card-label">Tổng số lần đánh giá</div>
           <div className="card-value">{totalAssessments}</div>
         </div>
-      </div>
+      </InfoCard>
 
       {/* Average Score */}
-      <div className="overview-card card-info">
+      <InfoCard variant="secondary" className="overview-card-item">
         <div className="card-icon">📈</div>
         <div className="card-content">
           <div className="card-label">Điểm trung bình</div>
@@ -87,10 +88,10 @@ const OverviewCards: React.FC<OverviewCardsProps> = ({
             <span className="card-max">/21</span>
           </div>
         </div>
-      </div>
+      </InfoCard>
 
       {/* Latest Score */}
-      <div className="overview-card card-success">
+      <InfoCard variant="success" className="overview-card-item">
         <div className="card-icon">🎯</div>
         <div className="card-content">
           <div className="card-label">Điểm gần nhất</div>
@@ -99,16 +100,19 @@ const OverviewCards: React.FC<OverviewCardsProps> = ({
             {latestScore !== undefined && <span className="card-max">/21</span>}
           </div>
         </div>
-      </div>
+      </InfoCard>
 
       {/* Trend */}
-      <div className={`overview-card card-trend ${getTrendClass()}`}>
+      <InfoCard
+        variant="secondary"
+        className={`overview-card-item ${getTrendClass()}`}
+      >
         <div className="card-icon">{getTrendIcon()}</div>
         <div className="card-content">
           <div className="card-label">Xu hướng</div>
           <div className="card-value-text">{getTrendText()}</div>
         </div>
-      </div>
+      </InfoCard>
     </div>
   );
 };

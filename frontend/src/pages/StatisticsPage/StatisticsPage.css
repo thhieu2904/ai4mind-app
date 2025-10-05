@@ -1,42 +1,36 @@
 /* Statistics Page Styles */
 .statistics-page {
-  padding: 0;
-  min-height: 100vh;
+  padding: 1rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  min-height: calc(100vh - 130px);
   background: #f8fafc;
 }
 
-/* Page Header */
-.page-header {
-  padding: 2rem 2rem 1.5rem 2rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border-radius: 0 0 1rem 1rem;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-  margin-bottom: 2rem;
+/* Statistics Header Info */
+.statistics-header-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  align-items: center;
 }
 
-.header-content {
-  max-width: 100%;
-}
-
-.page-title {
-  font-size: 1.75rem;
-  font-weight: 700;
-  margin: 0 0 0.5rem 0;
-  color: white;
-  line-height: 1.2;
-}
-
-.page-subtitle {
-  font-size: 1rem;
-  opacity: 0.95;
-  margin: 0;
+.statistics-header-info .info-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
   line-height: 1.5;
+}
+
+.statistics-header-info .info-item strong {
+  font-weight: 600;
+  color: #667eea;
 }
 
 /* Page Content */
 .page-content {
-  padding: 0 2rem 2rem 2rem;
+  padding: 0;
 }
 
 /* Filter Section */

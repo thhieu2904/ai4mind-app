@@ -1,34 +1,158 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import MainLayout from "../../components/layout/MainLayout";
+import PageHeaderCard from "../../components/common/PageHeaderCard";
+import {
+  DashboardService,
+  DashboardWelcomeData,
+} from "../../services/dashboardService";
 import "./DashboardPage.css";
 
 const DashboardPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [welcomeData, setWelcomeData] = useState<DashboardWelcomeData | null>(
+    null
+  );
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchWelcomeData();
+  }, []);
+
+  const fetchWelcomeData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await DashboardService.getWelcomeData();
+      setWelcomeData(data);
+    } catch (err: any) {
+      console.error("Failed to fetch welcome data:", err);
+      setError("Không thể tải dữ liệu dashboard");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Helper: Get emoji based on severity
+  const getEmotionEmoji = (severity: string | null): string => {
+    const emojiMap: Record<string, string> = {
+      minimal: "😊",
+      mild: "🙂",
+      moderate: "😟",
+      severe: "😔",
+    };
+    return emojiMap[severity || ""] || "💭";
+  };
+
+  // Helper: Get CSS class for emotion
+  const getEmotionClass = (severity: string | null): string => {
+    const classMap: Record<string, string> = {
+      minimal: "emotion-positive",
+      mild: "emotion-neutral",
+      moderate: "emotion-anxious",
+      severe: "emotion-severe",
+    };
+    return classMap[severity || ""] || "emotion-unknown";
+  };
+
+  // Helper: Format date difference
+  const formatEmotionDate = (date: string | null): string => {
+    if (!date) return "";
+
+    const assessmentDate = new Date(date);
+    const now = new Date();
+    const diffDays = Math.floor(
+      (now.getTime() - assessmentDate.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    if (diffDays === 0) return "hôm nay";
+    if (diffDays === 1) return "hôm qua";
+    if (diffDays <= 7) return `${diffDays} ngày trước`;
+    return assessmentDate.toLocaleDateString("vi-VN");
+  };
 
   return (
     <MainLayout>
       <div className="dashboard-container">
-        {/* Welcome Card with Health Info */}
-        <div className="welcome-card">
-          <h1 className="welcome-title">
-            Xin chào
-            <br />
-            (tên)!
-          </h1>
-          <div className="health-info">
-            <p className="info-item">
-              • Bạn đã chăm sóc sức khỏe tinh thần cùng <strong>AI4Mind</strong>{" "}
-              được [số ngày] ngày.
-            </p>
-            <p className="info-item">
-              • Trạng thái của bạn trong 30 ngày gần đây là [
-              <strong>cảm xúc người dùng</strong>].
-            </p>
-          </div>
-        </div>
+        {/* Page Header Card - Welcome */}
+        {loading ? (
+          <PageHeaderCard
+            icon="🏠"
+            title="Dashboard"
+            subtitle="Đang tải..."
+            variant="primary"
+            gradient
+          />
+        ) : error ? (
+          <PageHeaderCard
+            icon="🏠"
+            title="Dashboard"
+            subtitle={error}
+            variant="primary"
+            gradient
+          />
+        ) : (
+          <PageHeaderCard
+            icon="👋"
+            title={`Xin chào, ${welcomeData?.user_name || user?.full_name || "bạn"}!`}
+            subtitle={
+              welcomeData?.latest_emotion_text
+                ? `${getEmotionEmoji(welcomeData.latest_emotion_severity)} ${welcomeData.latest_emotion_text}`
+                : "Chưa có đánh giá"
+            }
+            variant="primary"
+            gradient
+            description={
+              <div className="dashboard-header-info">
+                <p className="header-info-item">
+                  🌟 Bạn đã chăm sóc sức khỏe tinh thần cùng{" "}
+                  <strong>AI4Mind</strong> được{" "}
+                  <strong>{welcomeData?.days_since_registration || 0}</strong>{" "}
+                  ngày
+                </p>
+
+                {welcomeData?.latest_emotion_text && (
+                  <p className="header-info-item">
+                    📅 Cảm xúc gần nhất:{" "}
+                    <strong>
+                      {formatEmotionDate(welcomeData.latest_emotion_date)}
+                    </strong>
+                  </p>
+                )}
+
+                {/* Contextual messages */}
+                {welcomeData?.latest_emotion_severity === "minimal" && (
+                  <p className="header-info-item encouraging">
+                    💪 Bạn đang làm rất tốt! Hãy tiếp tục duy trì.
+                  </p>
+                )}
+
+                {welcomeData?.latest_emotion_severity === "severe" && (
+                  <p className="header-info-item supportive">
+                    🤗 Đừng lo lắng, chúng mình luôn ở đây hỗ trợ bạn.
+                  </p>
+                )}
+
+                {!welcomeData?.has_recent_assessment &&
+                  welcomeData &&
+                  welcomeData.total_assessments > 0 && (
+                    <p className="header-info-item reminder">
+                      📅 Bạn chưa làm đánh giá trong tuần này.
+                    </p>
+                  )}
+
+                {!welcomeData?.latest_emotion_text && (
+                  <p className="header-info-item neutral">
+                    💭 Hãy thử làm bài trắc nghiệm GAD-7 đầu tiên!
+                  </p>
+                )}
+              </div>
+            }
+          />
+        )}
 
         {/* Main Features Section */}
         <h2 className="section-title">Các tính năng chính</h2>

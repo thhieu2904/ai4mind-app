@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { useAssessments } from "../../hooks/useAssessments";
 import { type Assessment } from "../../services/assessmentService";
 import MainLayout from "../../components/layout/MainLayout";
+import PageHeaderCard from "../../components/common/PageHeaderCard";
 import AssessmentCard from "./components/AssessmentCard";
 import Pagination from "./components/Pagination";
 import AssessmentDetailModal from "./components/AssessmentDetailModal";
@@ -55,65 +56,52 @@ const AssessmentHistoryPage: React.FC = () => {
   return (
     <MainLayout>
       <div className="assessment-history-page">
-        {/* Header */}
-        <div className="page-header">
-          <div className="header-content">
-            <h1 className="page-title">Lịch sử đánh giá GAD-7</h1>
-            <p className="page-subtitle">
-              Xem lại các lần đánh giá tình trạng lo âu của bạn
-            </p>
-          </div>
-          <div className="header-actions">
-            <button onClick={handleNewAssessment} className="btn btn-primary">
-              <span className="btn-icon">+</span>
-              Đánh giá mới
-            </button>
-            <button
-              onClick={refresh}
-              className="btn btn-outline"
-              disabled={loading}
-            >
-              <span className="btn-icon">🔄</span>
-              Làm mới
-            </button>
-          </div>
-        </div>
+        {/* Page Header */}
+        <PageHeaderCard
+          icon="📋"
+          title="Lịch sử đánh giá GAD-7"
+          subtitle="Theo dõi tình trạng lo âu"
+          description={
+            <div className="history-header-info">
+              <span className="info-item">
+                📊 Xem lại các lần đánh giá tình trạng lo âu của bạn
+              </span>
+              {pagination && (
+                <span className="info-item">
+                  📝 Tổng số: <strong>{pagination.total}</strong> lần đánh giá
+                </span>
+              )}
+            </div>
+          }
+          actions={
+            <div style={{ display: "flex", gap: "0.75rem" }}>
+              <button
+                onClick={handleNewAssessment}
+                className="btn btn-primary"
+                style={{ padding: "0.75rem 1.5rem" }}
+              >
+                <span className="btn-icon">+</span>
+                Đánh giá mới
+              </button>
+              <button
+                onClick={refresh}
+                className="btn btn-outline"
+                disabled={loading}
+                style={{ padding: "0.75rem 1.5rem" }}
+              >
+                <span className="btn-icon">🔄</span>
+                Làm mới
+              </button>
+            </div>
+          }
+          variant="primary"
+          gradient
+        />
 
         {/* Content */}
         <div className="page-content">
-          {/* Statistics Summary */}
-          {assessments.length > 0 && (
-            <div className="stats-summary">
-              <div className="stat-item">
-                <span className="stat-number">{pagination.total}</span>
-                <span className="stat-label">Tổng số lần đánh giá</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-number">
-                  {assessments.length > 0
-                    ? Math.round(
-                        (assessments.reduce(
-                          (sum, a) => sum + a.total_score,
-                          0
-                        ) /
-                          assessments.length) *
-                          10
-                      ) / 10
-                    : 0}
-                </span>
-                <span className="stat-label">Điểm trung bình (trang này)</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-number">
-                  {assessments[0]?.total_score || 0}
-                </span>
-                <span className="stat-label">Điểm gần nhất</span>
-              </div>
-            </div>
-          )}
-
           {/* Loading State */}
-          {loading && (
+          {loading && assessments.length === 0 && (
             <div className="loading-state">
               <div className="spinner"></div>
               <p>Đang tải danh sách đánh giá...</p>

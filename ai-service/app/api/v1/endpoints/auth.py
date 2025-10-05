@@ -27,7 +27,7 @@ from app.schemas.auth import (
     Token,
     RefreshToken
 )
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.models.student import Student
 from app.models.parent import Parent
 from app.models.counselor import Counselor
@@ -73,7 +73,7 @@ async def register(
     db.flush()  # Get user.id without committing
     
     # Create role-specific profile
-    if user_data.role == "student":
+    if user_data.role == UserRole.STUDENT:
         # Parse date_of_birth if provided
         from datetime import datetime
         date_of_birth_obj = None
@@ -89,7 +89,7 @@ async def register(
             # Check if parent with this email already exists
             parent_user = db.query(User).filter(
                 User.email == user_data.parent_email,
-                User.role == "parent"
+                User.role == UserRole.PARENT
             ).first()
             
             if parent_user:
@@ -110,7 +110,7 @@ async def register(
                     email=user_data.parent_email,
                     hashed_password=get_password_hash(temp_password),
                     full_name="Phụ huynh",  # Temporary, parent updates later
-                    role="parent",
+                    role=UserRole.PARENT,
                     is_active=False,  # Inactive until parent verifies
                     is_verified=False
                 )
@@ -139,13 +139,13 @@ async def register(
         )
         db.add(student)
     
-    elif user_data.role == "parent":
+    elif user_data.role == UserRole.PARENT:
         parent = Parent(
             user_id=user.id
         )
         db.add(parent)
     
-    elif user_data.role == "counselor":
+    elif user_data.role == UserRole.COUNSELOR:
         counselor = Counselor(
             user_id=user.id,
             license_number=user_data.license_number,
@@ -274,7 +274,7 @@ async def get_me(
     """
     # Get role-specific profile
     profile = None
-    if current_user.role == "student":
+    if current_user.role == UserRole.STUDENT:
         student = db.query(Student).filter(Student.user_id == current_user.id).first()
         if student:
             profile = {
@@ -285,7 +285,7 @@ async def get_me(
                 "grade": student.grade
             }
     
-    elif current_user.role == "parent":
+    elif current_user.role == UserRole.PARENT:
         parent = db.query(Parent).filter(Parent.user_id == current_user.id).first()
         if parent:
             profile = {
@@ -294,7 +294,7 @@ async def get_me(
                 "relationship": parent.relationship
             }
     
-    elif current_user.role == "counselor":
+    elif current_user.role == UserRole.COUNSELOR:
         counselor = db.query(Counselor).filter(Counselor.user_id == current_user.id).first()
         if counselor:
             profile = {
