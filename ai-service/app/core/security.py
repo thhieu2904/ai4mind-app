@@ -131,10 +131,14 @@ async def get_current_active_user(
 def require_roles(allowed_roles: List[str]):
     """Dependency to check if user has required role"""
     async def role_checker(current_user = Depends(get_current_active_user)):
-        if current_user.role not in allowed_roles:
+        # Compare role value (uppercase) with allowed roles (convert to uppercase)
+        user_role = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
+        allowed_roles_upper = [r.upper() for r in allowed_roles]
+        
+        if user_role not in allowed_roles_upper:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Role '{current_user.role}' is not allowed to access this resource"
+                detail=f"Role '{user_role}' is not allowed to access this resource"
             )
         return current_user
     return role_checker

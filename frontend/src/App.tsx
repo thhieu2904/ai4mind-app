@@ -19,6 +19,7 @@ import MedicalCentersPage from "./pages/MedicalCentersPage/MedicalCentersPage";
 import CounselorListPage from "./pages/CounselorListPage";
 import CounselorChatPage from "./pages/CounselorChatPage";
 import SupportHubPage from "./pages/SupportHubPage";
+import RatingPage from "./pages/RatingPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -177,6 +178,15 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <CounselorChatPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/rating"
+                element={
+                  <ProtectedRoute>
+                    <RatingPage />
                   </ProtectedRoute>
                 }
               />

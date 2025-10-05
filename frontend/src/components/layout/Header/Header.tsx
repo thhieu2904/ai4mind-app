@@ -1,4 +1,21 @@
-import React from "react";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  IconButton,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
+  Divider,
+  Snackbar,
+  Alert,
+} from "@mui/material";
+import {
+  Person as PersonIcon,
+  RateReview as RateReviewIcon,
+  Download as DownloadIcon,
+  Logout as LogoutIcon,
+} from "@mui/icons-material";
 import { useAuth } from "../../../contexts/AuthContext";
 import "./Header.css";
 
@@ -8,7 +25,87 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ showMenu = false, onMenuClick }) => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: "success" | "error" | "info" | "warning";
+  }>({
+    open: false,
+    message: "",
+    severity: "success",
+  });
+
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
+  };
+
+  const showSnackbar = (
+    message: string,
+    severity: "success" | "error" | "info" | "warning"
+  ) => {
+    setSnackbar({ open: true, message, severity });
+  };
+
+  const handleRating = () => {
+    handleMenuClose();
+    navigate("/rating");
+  };
+
+  const handleExportData = async () => {
+    handleMenuClose();
+    try {
+      showSnackbar("Đang xuất dữ liệu...", "info");
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/v1/export/user-data`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Export error response:", errorText);
+        throw new Error(`Export failed: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `AI4Mind_Data_${new Date().toISOString().split("T")[0]}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      showSnackbar("Đã xuất dữ liệu thành công!", "success");
+    } catch (error) {
+      console.error("Export failed:", error);
+      showSnackbar("Không thể xuất dữ liệu. Vui lòng thử lại sau.", "error");
+    }
+  };
+
+  const handleLogout = () => {
+    handleMenuClose();
+    logout();
+    navigate("/login");
+  };
 
   return (
     <header className="mobile-header">
@@ -18,13 +115,80 @@ const Header: React.FC<HeaderProps> = ({ showMenu = false, onMenuClick }) => {
         </div>
 
         <div className="header-right">
-          <button className="user-profile-button" aria-label="User Profile">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-            </svg>
-          </button>
+          <IconButton
+            onClick={handleMenuOpen}
+            size="small"
+            aria-label="User Profile Menu"
+            aria-controls={open ? "user-menu" : undefined}
+            aria-haspopup="true"
+            aria-expanded={open ? "true" : undefined}
+            sx={{ color: "#667eea" }}
+          >
+            <PersonIcon />
+          </IconButton>
+
+          <Menu
+            id="user-menu"
+            anchorEl={anchorEl}
+            open={open}
+            onClose={handleMenuClose}
+            anchorOrigin={{
+              vertical: "bottom",
+              horizontal: "right",
+            }}
+            transformOrigin={{
+              vertical: "top",
+              horizontal: "right",
+            }}
+            PaperProps={{
+              sx: {
+                mt: 1,
+                minWidth: 200,
+              },
+            }}
+          >
+            <MenuItem onClick={handleRating}>
+              <ListItemIcon>
+                <RateReviewIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Đánh giá ứng dụng</ListItemText>
+            </MenuItem>
+
+            <MenuItem onClick={handleExportData}>
+              <ListItemIcon>
+                <DownloadIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Xuất dữ liệu cá nhân</ListItemText>
+            </MenuItem>
+
+            <Divider />
+
+            <MenuItem onClick={handleLogout}>
+              <ListItemIcon>
+                <LogoutIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Đăng xuất</ListItemText>
+            </MenuItem>
+          </Menu>
         </div>
       </div>
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert
+          onClose={handleCloseSnackbar}
+          severity={snackbar.severity}
+          sx={{ width: "100%" }}
+          variant="filled"
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </header>
   );
 };

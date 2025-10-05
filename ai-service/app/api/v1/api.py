@@ -2,7 +2,7 @@
 API v1 router
 """
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, assessments, voice_analysis, students, combined_assessment, assessment_voice, ai_chat, medical_centers, counselor_chat
+from app.api.v1.endpoints import auth, assessments, voice_analysis, students, combined_assessment, assessment_voice, ai_chat, medical_centers, counselor_chat, export
 
 api_router = APIRouter()
 
@@ -16,6 +16,7 @@ api_router.include_router(voice_analysis.router, prefix="/voice-analysis", tags=
 api_router.include_router(ai_chat.router, prefix="/ai-chat", tags=["AI Chat"])
 api_router.include_router(medical_centers.router, prefix="/medical-centers", tags=["Medical Centers"])
 api_router.include_router(counselor_chat.router, prefix="/counselor-chat", tags=["Counselor Chat"])
+api_router.include_router(export.router, prefix="/export", tags=["Export Data"])
 
 # Add more routers here as we implement them
 # api_router.include_router(conversations.router, prefix="/conversations", tags=["Conversations"])
