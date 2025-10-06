@@ -41,10 +41,7 @@ const AssessmentPage: React.FC = () => {
       setCurrentQuestion(currentQuestion + 1);
     } else {
       // Calculate total score
-      const totalScore = answers.reduce(
-        (sum: number, ans) => sum + (ans || 0),
-        0
-      );
+      answers.reduce((sum: number, ans) => sum + (ans || 0), 0);
 
       // Submit to backend and save to database
       setIsSubmitting(true);

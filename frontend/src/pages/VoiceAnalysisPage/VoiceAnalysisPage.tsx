@@ -11,14 +11,6 @@ interface LocationState {
   gad7Severity?: string;
 }
 
-interface Assessment {
-  id: number;
-  total_score: number;
-  severity_level: string;
-  created_at: string;
-  analysis: string;
-}
-
 // Recording prompts in Vietnamese
 const RECORDING_PROMPTS = [
   {
@@ -63,9 +55,6 @@ const VoiceAnalysisPage: React.FC = () => {
   );
 
   // Assessment selection state
-  const [availableAssessments, setAvailableAssessments] = useState<
-    Assessment[]
-  >([]);
   const [loadingAssessments, setLoadingAssessments] = useState(true);
   const [showAssessmentSelection, setShowAssessmentSelection] =
     useState(!assessmentId);
@@ -143,7 +132,6 @@ const VoiceAnalysisPage: React.FC = () => {
             console.log(
               "📝 No assessments found, user needs to complete GAD-7 first"
             );
-            setAvailableAssessments([]);
             setShowAssessmentSelection(true); // Show "need GAD-7" message
           } else {
             throw error; // Re-throw other errors

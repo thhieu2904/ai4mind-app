@@ -47,17 +47,6 @@ const DashboardPage: React.FC = () => {
     return emojiMap[severity || ""] || "💭";
   };
 
-  // Helper: Get CSS class for emotion
-  const getEmotionClass = (severity: string | null): string => {
-    const classMap: Record<string, string> = {
-      minimal: "emotion-positive",
-      mild: "emotion-neutral",
-      moderate: "emotion-anxious",
-      severe: "emotion-severe",
-    };
-    return classMap[severity || ""] || "emotion-unknown";
-  };
-
   // Helper: Format date difference
   const formatEmotionDate = (date: string | null): string => {
     if (!date) return "";

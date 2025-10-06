@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import MainLayout from "../../components/layout/MainLayout";
 import "./ComprehensiveResultsPage.css";
@@ -73,7 +73,6 @@ const ComprehensiveResultsPage: React.FC = () => {
     assessmentId,
     gad7Score,
     gad7Severity,
-    voiceAnalysisId,
     dominantEmotion,
     sentimentScore,
     transcription,

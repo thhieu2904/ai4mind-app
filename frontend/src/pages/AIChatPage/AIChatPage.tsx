@@ -14,7 +14,6 @@ import {
   Alert,
   Container,
   Stack,
-  Divider,
 } from "@mui/material";
 import {
   Send as SendIcon,
@@ -39,7 +38,6 @@ const AIChatPage: React.FC = () => {
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
-  const [conversationId, setConversationId] = useState<number | null>(null);
   const [assessmentContext, setAssessmentContext] =
     useState<AssessmentContext | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,7 +59,6 @@ const AIChatPage: React.FC = () => {
       try {
         setLoading(true);
         const conversation = await getOrCreateConversation();
-        setConversationId(conversation.id);
 
         // Load messages
         const msgs = await getMessages(conversation.id);
