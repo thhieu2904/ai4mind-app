@@ -277,12 +277,21 @@ async def get_me(
     if current_user.role == UserRole.STUDENT:
         student = db.query(Student).filter(Student.user_id == current_user.id).first()
         if student:
+            # FIX: Include ALL student fields for consistency with /students/me
+            # This fixes Voice Analysis page missing critical data (gender, date_of_birth, etc.)
             profile = {
+                "id": student.id,  # ✅ Added: student.id
+                "user_id": student.user_id,  # ✅ Added: user_id reference
                 "student_code": student.student_code,
+                "date_of_birth": student.date_of_birth.isoformat() if student.date_of_birth else None,  # ✅ Added
+                "gender": student.gender,  # ✅ Added: CRITICAL for voice analysis
+                "phone_number": student.phone_number,  # ✅ Added
+                "address": student.address,  # ✅ Added
                 "university": student.university,
                 "major": student.major,
                 "education_level": student.education_level,
-                "grade": student.grade
+                "grade": student.grade,
+                "emergency_contact_parent_id": student.emergency_contact_parent_id  # ✅ Added
             }
     
     elif current_user.role == UserRole.PARENT:
