@@ -1,6 +1,29 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
 
+CREATE TABLE public.ai_conversations (
+  id bigint NOT NULL DEFAULT nextval('ai_conversations_id_seq'::regclass),
+  student_id bigint NOT NULL,
+  latest_assessment_id bigint,
+  title character varying NOT NULL DEFAULT 'Chat với AI'::character varying,
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  last_message_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT ai_conversations_pkey PRIMARY KEY (id),
+  CONSTRAINT ai_conversations_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id),
+  CONSTRAINT ai_conversations_latest_assessment_id_fkey FOREIGN KEY (latest_assessment_id) REFERENCES public.assessments(id)
+);
+CREATE TABLE public.ai_messages (
+  id bigint NOT NULL DEFAULT nextval('ai_messages_id_seq'::regclass),
+  conversation_id bigint NOT NULL,
+  role character varying NOT NULL CHECK (role::text = ANY (ARRAY['user'::character varying, 'assistant'::character varying]::text[])),
+  content text NOT NULL,
+  related_assessment_id bigint,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT ai_messages_pkey PRIMARY KEY (id),
+  CONSTRAINT ai_messages_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES public.ai_conversations(id),
+  CONSTRAINT ai_messages_related_assessment_id_fkey FOREIGN KEY (related_assessment_id) REFERENCES public.assessments(id)
+);
 CREATE TABLE public.alembic_version (
   version_num character varying NOT NULL,
   CONSTRAINT alembic_version_pkey PRIMARY KEY (version_num)
@@ -43,6 +66,23 @@ CREATE TABLE public.counselors (
   CONSTRAINT counselors_pkey PRIMARY KEY (id),
   CONSTRAINT counselors_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
+CREATE TABLE public.medical_centers (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name character varying NOT NULL,
+  address text NOT NULL,
+  latitude numeric NOT NULL,
+  longitude numeric NOT NULL,
+  phone character varying,
+  email character varying,
+  website character varying,
+  services ARRAY DEFAULT ARRAY[]::text[],
+  opening_hours jsonb DEFAULT '{}'::jsonb,
+  description text,
+  image_url text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT medical_centers_pkey PRIMARY KEY (id)
+);
 CREATE TABLE public.messages (
   id integer NOT NULL DEFAULT nextval('messages_id_seq'::regclass),
   conversation_id integer NOT NULL,
@@ -81,13 +121,13 @@ CREATE TABLE public.students (
   address text,
   university character varying,
   major character varying,
-  year_of_study integer,
-  emergency_contact_name character varying,
-  emergency_contact_phone character varying,
-  emergency_contact_relationship character varying,
   gender character varying DEFAULT 'prefer_not_to_say'::character varying CHECK (gender::text = ANY (ARRAY['male'::character varying, 'female'::character varying, 'other'::character varying, 'prefer_not_to_say'::character varying]::text[])),
+  emergency_contact_parent_id integer,
+  education_level character varying CHECK (education_level::text = ANY (ARRAY['high_school'::character varying, 'undergraduate'::character varying, 'graduate'::character varying, 'other'::character varying]::text[])),
+  grade character varying,
   CONSTRAINT students_pkey PRIMARY KEY (id),
-  CONSTRAINT students_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+  CONSTRAINT students_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+  CONSTRAINT fk_students_emergency_contact_parent FOREIGN KEY (emergency_contact_parent_id) REFERENCES public.parents(id)
 );
 CREATE TABLE public.users (
   id integer NOT NULL DEFAULT nextval('users_id_seq'::regclass),
@@ -132,6 +172,8 @@ CREATE TABLE public.voice_analyses (
   normalized_features json,
   processing_status character varying NOT NULL DEFAULT 'pending'::character varying,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
+  comprehensive_analysis text,
+  comprehensive_recommendations jsonb,
   CONSTRAINT voice_analyses_pkey PRIMARY KEY (id),
   CONSTRAINT voice_analyses_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id),
   CONSTRAINT voice_analyses_assessment_id_fkey FOREIGN KEY (assessment_id) REFERENCES public.assessments(id)

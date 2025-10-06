@@ -18,7 +18,7 @@ from app.schemas.assessment import (
     AssessmentStats,
     AssessmentListResponse
 )
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.models.student import Student
 from app.models.assessment import Assessment
 from app.services.gemini_service import GeminiService
@@ -150,7 +150,10 @@ async def list_assessments(
     query = db.query(Assessment)
     
     # Filter based on role
-    if current_user.role == "student":
+    print(f"[DEBUG] User role: {current_user.role}, User ID: {current_user.id}, Email: {current_user.email}")
+    print(f"[DEBUG] Role type: {type(current_user.role)}, Role value: {current_user.role.value if hasattr(current_user.role, 'value') else current_user.role}")
+    
+    if current_user.role == UserRole.STUDENT:
         student = db.query(Student).filter(Student.user_id == current_user.id).first()
         if not student:
             raise HTTPException(
@@ -158,13 +161,14 @@ async def list_assessments(
                 detail="Student profile not found"
             )
         query = query.filter(Assessment.student_id == student.id)
+        print(f"[DEBUG] Filtered by student_id: {student.id}")
     
-    elif current_user.role == "parent":
+    elif current_user.role == UserRole.PARENT:
         # TODO: Filter by children with consent
         # For now, return empty list
         query = query.filter(Assessment.id == -1)
     
-    elif current_user.role == "counselor":
+    elif current_user.role == UserRole.COUNSELOR:
         # TODO: Filter by assigned students
         # For now, return empty list
         query = query.filter(Assessment.id == -1)
@@ -285,6 +289,79 @@ async def get_assessment_stats(
     )
 
 
+# ⚠️ IMPORTANT: /latest MUST be BEFORE /{assessment_id} to avoid route conflict!
+# FastAPI matches routes in order - if /{assessment_id} comes first, 
+# it will try to parse "latest" as integer → 422 error
+@router.get("/latest", response_model=AssessmentDetail)
+async def get_latest_assessment(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+) -> Any:
+    """
+    Get user's latest assessment (OPTIMIZED for Voice Analysis page)
+    
+    Returns the most recent assessment without loading all data.
+    Uses LIMIT 1 for maximum performance.
+    
+    - Students: Their latest assessment
+    - Parents: Latest from children (if consent)
+    - Counselors: Not supported (use list endpoint)
+    - Admins: Not supported (use list endpoint)
+    """
+    if current_user.role == UserRole.STUDENT:
+        student = db.query(Student).filter(Student.user_id == current_user.id).first()
+        if not student:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Student profile not found"
+            )
+        
+        # Optimized query: ORDER BY + LIMIT 1
+        assessment = db.query(Assessment).filter(
+            Assessment.student_id == student.id
+        ).order_by(desc(Assessment.created_at)).limit(1).first()
+        
+        if not assessment:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No assessments found. Please complete GAD-7 first."
+            )
+        
+        # Build response
+        severity_info = get_severity_level(assessment.total_score)
+        questions_with_answers = []
+        for i, answer in enumerate(assessment.answers):
+            question = GAD7_QUESTIONS_VI[i]
+            answer_text = GAD7_ANSWER_OPTIONS_VI[answer]["text"]
+            questions_with_answers.append({
+                "question_number": i + 1,
+                "question_text": question["text"],
+                "answer_value": answer,
+                "answer_text": answer_text
+            })
+        
+        return AssessmentDetail(
+            id=assessment.id,
+            student_id=assessment.student_id,
+            answers=assessment.answers,
+            total_score=assessment.total_score,
+            severity_level=assessment.severity_level,
+            created_at=assessment.created_at,
+            analysis=assessment.analysis,
+            recommendations=assessment.recommendations,
+            functional_impairment=assessment.functional_impairment,
+            notes=assessment.notes,
+            questions_with_answers=questions_with_answers,
+            severity_info=severity_info
+        )
+    
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only students can use this endpoint. Please use /api/v1/assessments/ for listing."
+        )
+
+
 @router.get("/{assessment_id}", response_model=AssessmentDetail)
 async def get_assessment(
     assessment_id: int,
@@ -317,7 +394,7 @@ async def get_assessment(
         )
     
     # Students can only see their own
-    if current_user.role == "student" and student.user_id != current_user.id:
+    if current_user.role == UserRole.STUDENT and student.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only view your own assessments"
@@ -340,10 +417,10 @@ async def get_assessment(
     # Get severity info
     severity_info = get_severity_level(assessment.total_score)
     
-    # Build response dict manually to include user_id
+    # Build response dict manually to include student_id
     detail_dict = {
         "id": assessment.id,
-        "user_id": student.user_id,
+        "student_id": assessment.student_id,
         "answers": assessment.answers,
         "total_score": assessment.total_score,
         "severity_level": assessment.severity_level,
@@ -357,6 +434,52 @@ async def get_assessment(
     }
     
     return AssessmentDetail(**detail_dict)
+
+
+@router.get("/check-exists")
+async def check_assessment_exists(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+) -> Any:
+    """
+    Fast check if user has any assessments (OPTIMIZED with EXISTS)
+    
+    Returns boolean without loading actual data.
+    Perfect for UI logic: "Show message if no GAD-7"
+    
+    Performance: Uses SELECT EXISTS instead of loading rows.
+    """
+    if current_user.role == UserRole.STUDENT:
+        student = db.query(Student).filter(Student.user_id == current_user.id).first()
+        if not student:
+            return {"exists": False, "count": 0, "message": "Student profile not found"}
+        
+        # Super fast EXISTS query
+        exists = db.query(
+            db.query(Assessment).filter(
+                Assessment.student_id == student.id
+            ).exists()
+        ).scalar()
+        
+        # Get count only if exists (optional optimization)
+        count = 0
+        if exists:
+            count = db.query(func.count(Assessment.id)).filter(
+                Assessment.student_id == student.id
+            ).scalar()
+        
+        return {
+            "exists": bool(exists),
+            "count": count,
+            "message": "Assessments found" if exists else "No assessments yet. Complete GAD-7 first."
+        }
+    
+    else:
+        return {
+            "exists": False,
+            "count": 0,
+            "message": "Only students can check assessments"
+        }
 
 
 @router.get("/questions/list")

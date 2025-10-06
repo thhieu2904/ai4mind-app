@@ -115,34 +115,39 @@ const VoiceAnalysisPage: React.FC = () => {
     loadStudentProfile();
   }, [user]);
 
-  // Load available assessments - simplified logic
+  // Load available assessments - OPTIMIZED with /latest endpoint
   useEffect(() => {
     const loadAssessments = async () => {
       try {
         setLoadingAssessments(true);
-        const response = await api.get("/api/v1/assessments/");
-        const assessmentResponse = response.data;
 
-        // Backend returns AssessmentListResponse with items array
-        const assessments = assessmentResponse.items || [];
-        setAvailableAssessments(assessments);
+        // OPTIMIZATION: Use /latest endpoint instead of loading all assessments
+        // Old: GET /api/v1/assessments/ → Returns ALL assessments (slow!)
+        // New: GET /api/v1/assessments/latest → Returns only latest (fast!)
+        try {
+          console.log("🚀 Calling /api/v1/assessments/latest...");
+          const response = await api.get("/api/v1/assessments/latest");
+          const latestAssessment = response.data;
 
-        // Simple logic: use latest assessment if available
-        if (assessments.length === 0) {
-          console.log(
-            "📝 No assessments found, user needs to complete GAD-7 first"
-          );
-          setShowAssessmentSelection(true); // Show "need GAD-7" message
-        } else {
           // Auto-select latest assessment
-          const latestAssessment = assessments[0]; // Already sorted by created_at DESC
           setAssessmentId(latestAssessment.id);
           setGad7Score(latestAssessment.total_score);
           setGad7Severity(latestAssessment.severity_level);
           setShowAssessmentSelection(false); // Go directly to voice analysis
           console.log(
-            `📋 Auto-selected latest assessment: ${latestAssessment.total_score}/21 (${latestAssessment.severity_level})`
+            `📋 Loaded latest assessment: ${latestAssessment.total_score}/21 (${latestAssessment.severity_level})`
           );
+        } catch (error: any) {
+          // 404 = No assessments found
+          if (error.response?.status === 404) {
+            console.log(
+              "📝 No assessments found, user needs to complete GAD-7 first"
+            );
+            setAvailableAssessments([]);
+            setShowAssessmentSelection(true); // Show "need GAD-7" message
+          } else {
+            throw error; // Re-throw other errors
+          }
         }
       } catch (error) {
         console.error("❌ Failed to load assessments:", error);
@@ -152,10 +157,16 @@ const VoiceAnalysisPage: React.FC = () => {
       }
     };
 
-    if (user?.role === "student") {
+    // FIX: Support both uppercase and lowercase roles (backend uses UPPERCASE enum)
+    console.log("🔍 User role check:", user?.role, "Type:", typeof user?.role);
+    const normalizedRole = user?.role?.toLowerCase();
+    if (normalizedRole === "student") {
+      console.log("✅ User is student, loading assessments...");
       loadAssessments();
+    } else {
+      console.log("⚠️ User is not student, role:", user?.role);
     }
-  }, [user]);
+  }, [user]); // ✅ useEffect dependency array
 
   // Show simple "need GAD-7" message if no assessments
   if (showAssessmentSelection) {

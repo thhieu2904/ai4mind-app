@@ -27,7 +27,7 @@ from app.schemas.auth import (
     Token,
     RefreshToken
 )
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.models.student import Student
 from app.models.parent import Parent
 from app.models.counselor import Counselor
@@ -73,7 +73,7 @@ async def register(
     db.flush()  # Get user.id without committing
     
     # Create role-specific profile
-    if user_data.role == "student":
+    if user_data.role == UserRole.STUDENT:
         # Parse date_of_birth if provided
         from datetime import datetime
         date_of_birth_obj = None
@@ -82,6 +82,47 @@ async def register(
                 date_of_birth_obj = datetime.strptime(user_data.date_of_birth, "%Y-%m-%d").date()
             except ValueError:
                 pass  # Invalid date format, keep as None
+        
+        # Handle parent email (emergency contact)
+        emergency_contact_parent_id = None
+        if user_data.parent_email:
+            # Check if parent with this email already exists
+            parent_user = db.query(User).filter(
+                User.email == user_data.parent_email,
+                User.role == UserRole.PARENT
+            ).first()
+            
+            if parent_user:
+                # Parent exists, get parent record
+                parent = db.query(Parent).filter(Parent.user_id == parent_user.id).first()
+                if parent:
+                    emergency_contact_parent_id = parent.id
+                else:
+                    # Parent user exists but no parent profile, create it
+                    new_parent = Parent(user_id=parent_user.id)
+                    db.add(new_parent)
+                    db.flush()
+                    emergency_contact_parent_id = new_parent.id
+            else:
+                # Parent doesn't exist, create new parent account
+                temp_password = "TempPass123!"  # TODO: Send email with reset link
+                parent_user = User(
+                    email=user_data.parent_email,
+                    hashed_password=get_password_hash(temp_password),
+                    full_name="Phụ huynh",  # Temporary, parent updates later
+                    role=UserRole.PARENT,
+                    is_active=False,  # Inactive until parent verifies
+                    is_verified=False
+                )
+                db.add(parent_user)
+                db.flush()
+                
+                new_parent = Parent(user_id=parent_user.id)
+                db.add(new_parent)
+                db.flush()
+                emergency_contact_parent_id = new_parent.id
+                
+                # TODO: Send welcome email to parent
         
         student = Student(
             user_id=user.id,
@@ -92,17 +133,19 @@ async def register(
             address=user_data.address,
             university=user_data.university,
             major=user_data.major,
-            year_of_study=user_data.year_of_study
+            education_level=user_data.education_level,
+            grade=user_data.grade,
+            emergency_contact_parent_id=emergency_contact_parent_id
         )
         db.add(student)
     
-    elif user_data.role == "parent":
+    elif user_data.role == UserRole.PARENT:
         parent = Parent(
             user_id=user.id
         )
         db.add(parent)
     
-    elif user_data.role == "counselor":
+    elif user_data.role == UserRole.COUNSELOR:
         counselor = Counselor(
             user_id=user.id,
             license_number=user_data.license_number,
@@ -231,17 +274,27 @@ async def get_me(
     """
     # Get role-specific profile
     profile = None
-    if current_user.role == "student":
+    if current_user.role == UserRole.STUDENT:
         student = db.query(Student).filter(Student.user_id == current_user.id).first()
         if student:
+            # FIX: Include ALL student fields for consistency with /students/me
+            # This fixes Voice Analysis page missing critical data (gender, date_of_birth, etc.)
             profile = {
+                "id": student.id,  # ✅ Added: student.id
+                "user_id": student.user_id,  # ✅ Added: user_id reference
                 "student_code": student.student_code,
+                "date_of_birth": student.date_of_birth.isoformat() if student.date_of_birth else None,  # ✅ Added
+                "gender": student.gender,  # ✅ Added: CRITICAL for voice analysis
+                "phone_number": student.phone_number,  # ✅ Added
+                "address": student.address,  # ✅ Added
                 "university": student.university,
                 "major": student.major,
-                "year_of_study": student.year_of_study
+                "education_level": student.education_level,
+                "grade": student.grade,
+                "emergency_contact_parent_id": student.emergency_contact_parent_id  # ✅ Added
             }
     
-    elif current_user.role == "parent":
+    elif current_user.role == UserRole.PARENT:
         parent = db.query(Parent).filter(Parent.user_id == current_user.id).first()
         if parent:
             profile = {
@@ -250,7 +303,7 @@ async def get_me(
                 "relationship": parent.relationship
             }
     
-    elif current_user.role == "counselor":
+    elif current_user.role == UserRole.COUNSELOR:
         counselor = db.query(Counselor).filter(Counselor.user_id == current_user.id).first()
         if counselor:
             profile = {

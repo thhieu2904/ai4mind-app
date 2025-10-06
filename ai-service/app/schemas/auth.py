@@ -16,10 +16,13 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     """Schema for user registration"""
     password: str = Field(..., min_length=8, max_length=100)
-    role: str = Field(..., pattern="^(student|parent|counselor|admin)$")
+    role: str = Field(..., pattern="^(student|parent|counselor|admin|STUDENT|PARENT|COUNSELOR|ADMIN)$")
     
     # Additional fields for specific roles
     phone: Optional[str] = Field(None, max_length=20)
+    
+    # Parent email for emergency contact (for students)
+    parent_email: Optional[EmailStr] = Field(None, description="Parent email for emergency contact (required for students)")
     
     # Student specific - IMPORTANT for GAD-7 assessment
     date_of_birth: Optional[str] = Field(None, description="Date of birth in YYYY-MM-DD format")
@@ -27,7 +30,8 @@ class UserCreate(UserBase):
     student_code: Optional[str] = Field(None, max_length=20)
     university: Optional[str] = Field(None, max_length=200)
     major: Optional[str] = Field(None, max_length=200)
-    year_of_study: Optional[int] = Field(None, ge=1, le=7)
+    education_level: Optional[str] = Field(None, pattern="^(high_school|undergraduate|graduate|other)$")
+    grade: Optional[str] = Field(None, max_length=50)
     address: Optional[str] = Field(None, max_length=500)
     
     # Counselor specific
@@ -48,6 +52,11 @@ class UserCreate(UserBase):
             raise ValueError('Password must contain at least one number')
         return v
     
+    @validator('role')
+    def validate_role(cls, v):
+        """Normalize role to UPPERCASE for database consistency"""
+        return v.upper()
+    
     @validator('student_code')
     def validate_student_code(cls, v, values):
         """Validate student code format if provided"""
@@ -60,7 +69,8 @@ class UserCreate(UserBase):
     @validator('license_number')
     def validate_license_number(cls, v, values):
         """Validate license number is required for counselor role"""
-        if values.get('role') == 'counselor' and not v:
+        role = values.get('role', '').upper()
+        if role == 'COUNSELOR' and not v:
             raise ValueError('License number is required for counselor role')
         return v
 

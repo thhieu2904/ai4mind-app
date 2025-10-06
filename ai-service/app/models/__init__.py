@@ -13,6 +13,9 @@ from app.models.counselor import Counselor
 from app.models.assessment import Assessment
 from app.models.conversation import Conversation, Message
 from app.models.voice_analysis import VoiceAnalysis
+from app.models.ai_chat import AIConversation, AIMessage
+from app.models.medical_center import MedicalCenter
+from app.models.counselor_chat import CounselorConversation, CounselorMessage
 
 __all__ = [
     "Base",
@@ -26,4 +29,9 @@ __all__ = [
     "Conversation",
     "Message",
     "VoiceAnalysis",
+    "AIConversation",
+    "AIMessage",
+    "MedicalCenter",
+    "CounselorConversation",
+    "CounselorMessage",
 ]

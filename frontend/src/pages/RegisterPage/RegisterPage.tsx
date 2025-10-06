@@ -17,6 +17,7 @@ const RegisterPage: React.FC = () => {
     gender: undefined,
     phone: "",
     student_code: "",
+    parent_email: "", // Emergency contact parent email
   });
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
@@ -97,7 +98,20 @@ const RegisterPage: React.FC = () => {
     setLoading(true);
 
     try {
-      await register(formData);
+      // Clean up empty fields before sending to backend
+      const cleanedData = { ...formData };
+
+      // Remove empty parent_email to avoid validation error
+      if (!cleanedData.parent_email || cleanedData.parent_email.trim() === "") {
+        delete cleanedData.parent_email;
+      }
+
+      // Remove empty optional fields
+      if (!cleanedData.student_code || cleanedData.student_code.trim() === "") {
+        delete cleanedData.student_code;
+      }
+
+      await register(cleanedData);
       navigate("/dashboard");
     } catch (err: any) {
       // Parse backend validation errors
@@ -320,27 +334,54 @@ const RegisterPage: React.FC = () => {
 
           {/* Student Code - Optional for students */}
           {formData.role === "student" && (
-            <div className="form-group">
-              <label htmlFor="student_code" className="form-label">
-                Mã sinh viên <span className="optional">(không bắt buộc)</span>
-              </label>
-              <input
-                type="text"
-                id="student_code"
-                name="student_code"
-                value={formData.student_code || ""}
-                onChange={handleChange}
-                className="form-input"
-                placeholder="SV12345"
-                disabled={loading}
-              />
-              <div className="field-hint">
-                <small>
-                  💡 Mã sinh viên giúp trường/tư vấn viên dễ dàng tra cứu. Bạn
-                  có thể thêm sau trong phần cài đặt.
-                </small>
+            <>
+              <div className="form-group">
+                <label htmlFor="student_code" className="form-label">
+                  Mã sinh viên{" "}
+                  <span className="optional">(không bắt buộc)</span>
+                </label>
+                <input
+                  type="text"
+                  id="student_code"
+                  name="student_code"
+                  value={formData.student_code || ""}
+                  onChange={handleChange}
+                  className="form-input"
+                  placeholder="SV12345"
+                  disabled={loading}
+                />
+                <div className="field-hint">
+                  <small>
+                    💡 Mã sinh viên giúp trường/tư vấn viên dễ dàng tra cứu. Bạn
+                    có thể thêm sau trong phần cài đặt.
+                  </small>
+                </div>
               </div>
-            </div>
+
+              <div className="form-group">
+                <label htmlFor="parent_email" className="form-label">
+                  Email phụ huynh{" "}
+                  <span className="important-badge">Liên hệ khẩn cấp</span>
+                </label>
+                <input
+                  type="email"
+                  id="parent_email"
+                  name="parent_email"
+                  value={formData.parent_email || ""}
+                  onChange={handleChange}
+                  className="form-input"
+                  placeholder="phu.huynh@example.com"
+                  disabled={loading}
+                />
+                <div className="field-hint">
+                  <small>
+                    🔐 Email phụ huynh sẽ được dùng làm liên hệ khẩn cấp. Hệ
+                    thống sẽ tự động tạo tài khoản cho phụ huynh nếu chưa tồn
+                    tại.
+                  </small>
+                </div>
+              </div>
+            </>
           )}
 
           <div className="form-group">

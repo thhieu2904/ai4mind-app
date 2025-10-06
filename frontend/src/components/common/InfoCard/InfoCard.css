@@ -1,0 +1,214 @@
+/* ===================================
+   InfoCard Component Styles
+   - Consistent Core (layout, spacing, typography)
+   - Flexible Variants (colors, backgrounds)
+   =================================== */
+
+/* ===== BASE CARD STYLES ===== */
+.info-card {
+  /* Consistent structure - DO NOT change */
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  padding: 24px;
+  background: white;
+  transition: all 0.3s ease;
+
+  /* Layout */
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  /* Positioning */
+  position: relative;
+  overflow: hidden;
+}
+
+/* Clickable state */
+.info-card--clickable {
+  cursor: pointer;
+}
+
+.info-card--clickable:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.info-card--clickable:active {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+
+/* ===== HEADER SECTION ===== */
+.info-card__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.info-card__icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+.info-card__header-content {
+  flex: 1;
+  min-width: 0; /* Allow text truncation */
+}
+
+.info-card__title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: inherit;
+}
+
+.info-card__subtitle {
+  margin: 4px 0 0 0;
+  font-size: 0.875rem;
+  opacity: 0.8;
+  line-height: 1.4;
+  color: inherit;
+}
+
+.info-card__header-extra {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* ===== BODY SECTION ===== */
+.info-card__body {
+  flex: 1;
+  color: inherit;
+}
+
+/* ===== ACTIONS SECTION ===== */
+.info-card__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* For gradient variants, use lighter border */
+.info-card--gradient .info-card__actions {
+  border-top-color: rgba(255, 255, 255, 0.2);
+}
+
+/* ===== VARIANT STYLES ===== */
+
+/* Plain variant (default white card) */
+.info-card--plain {
+  background: white;
+  color: #1a1a1a;
+}
+
+/* Primary variant (purple gradient) */
+.info-card--primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.info-card--primary.info-card--gradient {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Secondary variant (light border) */
+.info-card--secondary {
+  background: white;
+  border: 1px solid #e0e0e0;
+  color: #1a1a1a;
+}
+
+/* Success variant (green) */
+.info-card--success {
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+  color: white;
+}
+
+.info-card--success.info-card--gradient {
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}
+
+/* Warning variant (orange/red) */
+.info-card--warning {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+}
+
+.info-card--warning.info-card--gradient {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 768px) {
+  .info-card {
+    padding: 20px;
+  }
+
+  .info-card__title {
+    font-size: 1.125rem;
+  }
+
+  .info-card__subtitle {
+    font-size: 0.8125rem;
+  }
+
+  .info-card__icon {
+    width: 36px;
+    height: 36px;
+    font-size: 20px;
+  }
+
+  .info-card__actions {
+    flex-direction: column;
+  }
+
+  .info-card__actions > * {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .info-card {
+    padding: 16px;
+  }
+
+  .info-card__header {
+    gap: 8px;
+  }
+
+  .info-card__title {
+    font-size: 1rem;
+  }
+}
+
+/* ===== ACCESSIBILITY ===== */
+.info-card--clickable:focus {
+  outline: 2px solid #667eea;
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .info-card {
+    border: 2px solid currentColor;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .info-card,
+  .info-card--clickable:hover,
+  .info-card--clickable:active {
+    transition: none;
+    transform: none;
+  }
+}

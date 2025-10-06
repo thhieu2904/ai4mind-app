@@ -8,6 +8,12 @@
 *.key
 secrets/
 
+# Secrets vault - CRITICAL: Never commit!
+.secrets/
+.secrets/*.env
+.secrets/*.txt
+!.secrets/README.md
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

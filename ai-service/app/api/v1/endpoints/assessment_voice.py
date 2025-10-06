@@ -74,7 +74,7 @@ async def add_voice_to_assessment(
         raise HTTPException(403, "Only students can submit assessments")
     
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    # STEP 1: Load Assessment from Database (Already saved!)
+    # STEP 1: Load Assessment from Database (Already saved!) - OPTIMIZED
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     
     assessment = db.query(Assessment).filter(
@@ -87,13 +87,17 @@ async def add_voice_to_assessment(
     
     logger.info(f"Loaded assessment {assessment_id}: score={assessment.total_score}, severity={assessment.severity_level}")
     
-    # Allow multiple voice analyses for testing - remove duplicate check
-    existing_count = db.query(VoiceAnalysis).filter(
-        VoiceAnalysis.assessment_id == assessment_id
-    ).count()
+    # OPTIMIZATION: Use EXISTS query instead of .count() for checking duplicates
+    # Old: .count() loads all matching rows then counts
+    # New: EXISTS returns True/False immediately
+    has_existing_voice = db.query(
+        db.query(VoiceAnalysis).filter(
+            VoiceAnalysis.assessment_id == assessment_id
+        ).exists()
+    ).scalar()
     
-    if existing_count > 0:
-        logger.info(f"Found {existing_count} existing voice analysis(es) for assessment {assessment_id}, creating another one for testing")
+    if has_existing_voice:
+        logger.info(f"Found existing voice analysis for assessment {assessment_id}, creating another one for testing")
     
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     # STEP 2: Process Voice Recording

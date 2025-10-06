@@ -11,6 +11,15 @@ import AssessmentPage from "./pages/AssessmentPage";
 import ResultsPage from "./pages/ResultsPage";
 import ComprehensiveResultsPage from "./pages/ComprehensiveResultsPage";
 import VoiceAnalysisPage from "./pages/VoiceAnalysisPage";
+import AssessmentHistoryPage from "./pages/AssessmentHistoryPage";
+import StatisticsPage from "./pages/StatisticsPage";
+import ProfilePage from "./pages/ProfilePage";
+import AIChatPage from "./pages/AIChatPage/AIChatPage";
+import MedicalCentersPage from "./pages/MedicalCentersPage/MedicalCentersPage";
+import CounselorListPage from "./pages/CounselorListPage";
+import CounselorChatPage from "./pages/CounselorChatPage";
+import SupportHubPage from "./pages/SupportHubPage";
+import RatingPage from "./pages/RatingPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -97,6 +106,87 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <VoiceAnalysisPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/history"
+                element={
+                  <ProtectedRoute>
+                    <AssessmentHistoryPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/statistics"
+                element={
+                  <ProtectedRoute>
+                    <StatisticsPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <ProfilePage />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/ai-chat"
+                element={
+                  <ProtectedRoute>
+                    <AIChatPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/support-hub"
+                element={
+                  <ProtectedRoute>
+                    <SupportHubPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/medical-centers"
+                element={
+                  <ProtectedRoute>
+                    <MedicalCentersPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/counselor-list"
+                element={
+                  <ProtectedRoute>
+                    <CounselorListPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/counselor-chat/:conversationId"
+                element={
+                  <ProtectedRoute>
+                    <CounselorChatPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/rating"
+                element={
+                  <ProtectedRoute>
+                    <RatingPage />
                   </ProtectedRoute>
                 }
               />

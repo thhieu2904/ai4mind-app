@@ -15,7 +15,8 @@ export interface User {
     gender?: "male" | "female" | "other" | "prefer_not_to_say";
     university?: string;
     major?: string;
-    year_of_study?: number;
+    education_level?: "high_school" | "undergraduate" | "graduate" | "other";
+    grade?: string;
   };
 }
 
@@ -47,7 +48,11 @@ export interface RegisterRequest {
   student_code?: string;
   university?: string;
   major?: string;
-  year_of_study?: number;
+  education_level?: "high_school" | "undergraduate" | "graduate" | "other";
+  grade?: string;
+
+  // Emergency contact parent email (for students)
+  parent_email?: string;
 
   // Counselor specific (for future use)
   license_number?: string;

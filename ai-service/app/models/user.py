@@ -10,11 +10,11 @@ from app.models import Base
 
 
 class UserRole(str, enum.Enum):
-    """User role enumeration"""
-    STUDENT = "student"
-    PARENT = "parent"
-    COUNSELOR = "counselor"
-    ADMIN = "admin"
+    """User role enumeration - Match database enum values (uppercase)"""
+    STUDENT = "STUDENT"
+    PARENT = "PARENT"
+    COUNSELOR = "COUNSELOR"
+    ADMIN = "ADMIN"
 
 
 class User(Base):
