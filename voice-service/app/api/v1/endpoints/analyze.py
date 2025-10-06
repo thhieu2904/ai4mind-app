@@ -41,7 +41,7 @@ from app.models.schemas import (
 )
 from app.services.audio_processor import AudioProcessor
 from app.services.deepgram_service import DeepgramService  # NEW: Hybrid approach
-from app.services.whisper_service import WhisperService  # FALLBACK: Local dev only
+# WhisperService imported conditionally below (FALLBACK: Local dev only)
 from app.services.emotion_classifier import EmotionClassifier  # KEPT: Our unique value!
 from app.services.text_analyzer import TextAnalyzer
 from app.utils.gender_normalizer import GenderNormalizer  # KEPT: Our algorithm!
@@ -61,6 +61,8 @@ if settings.use_deepgram:
     logger.info("✅ Using Deepgram API for transcription (production mode)")
 else:
     # Fallback: Use Whisper (local dev only, not deployable on free tier)
+    # Import only when needed to avoid ModuleNotFoundError in production
+    from app.services.whisper_service import WhisperService
     transcription_service = WhisperService(model_size=settings.WHISPER_MODEL)
     logger.warning("⚠️  Using Whisper for transcription (local dev only, NOT deployable!)")
 
