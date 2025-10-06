@@ -1,6 +1,0 @@
-# Log files
-*.log
-*.log.*
-
-# Keep directory
-!.gitkeep

@@ -1,9 +1,0 @@
-# Audio files uploaded by users
-*.wav
-*.mp3
-*.m4a
-*.ogg
-*.flac
-
-# Except test samples
-!test-sample.wav
