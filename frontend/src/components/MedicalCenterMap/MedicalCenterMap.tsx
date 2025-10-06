@@ -9,8 +9,6 @@ import Map, {
   Popup,
   NavigationControl,
   GeolocateControl,
-  ViewStateChangeEvent,
-  GeolocateResultEvent,
   Source,
   Layer,
 } from "react-map-gl";

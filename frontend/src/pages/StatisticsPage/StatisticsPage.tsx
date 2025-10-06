@@ -28,22 +28,7 @@ const StatisticsPage: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // Calculate date range based on selected period
-      let startDate: string | undefined;
-      const now = new Date();
-
-      if (timePeriod !== "all") {
-        const daysMap = {
-          "7days": 7,
-          "30days": 30,
-          "3months": 90,
-        };
-        const days = daysMap[timePeriod];
-        const start = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
-        startDate = start.toISOString().split("T")[0];
-      }
-
-      const data = await AssessmentService.getStats(startDate);
+      const data = await AssessmentService.getStats();
       setStats(data);
     } catch (err: any) {
       console.error("Error fetching statistics:", err);
@@ -55,16 +40,6 @@ const StatisticsPage: React.FC = () => {
 
   const handleRefresh = () => {
     fetchStatistics();
-  };
-
-  const getTimePeriodLabel = () => {
-    const labels: Record<TimePeriod, string> = {
-      "7days": "7 ngày qua",
-      "30days": "30 ngày qua",
-      "3months": "3 tháng qua",
-      all: "Tất cả",
-    };
-    return labels[timePeriod];
   };
 
   // Calculate severity distribution from score history

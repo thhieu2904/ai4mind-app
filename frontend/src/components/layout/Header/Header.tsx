@@ -19,13 +19,8 @@ import {
 import { useAuth } from "../../../contexts/AuthContext";
 import "./Header.css";
 
-interface HeaderProps {
-  showMenu?: boolean;
-  onMenuClick?: () => void;
-}
-
-const Header: React.FC<HeaderProps> = ({ showMenu = false, onMenuClick }) => {
-  const { user, logout } = useAuth();
+const Header: React.FC = () => {
+  const { logout } = useAuth();
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);

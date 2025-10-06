@@ -71,7 +71,7 @@ export class UserService {
    * Update user basic information
    * @deprecated Use updateStudentProfile instead (handles both user and student data)
    */
-  static async updateUser(data: {
+  static async updateUser(_data: {
     full_name?: string;
     phone?: string;
   }): Promise<UserProfile> {

@@ -12,14 +12,6 @@ interface LocationState {
   answers: (number | null)[];
 }
 
-// GAD-7 Severity levels
-const getSeverityLevel = (score: number) => {
-  if (score <= 4) return "minimal";
-  if (score <= 9) return "mild";
-  if (score <= 14) return "moderate";
-  return "severe";
-};
-
 const getSeverityInfo = (severity: string) => {
   const severityMap: Record<
     string,

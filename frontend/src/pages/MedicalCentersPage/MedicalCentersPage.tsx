@@ -33,7 +33,6 @@ import TuneIcon from "@mui/icons-material/Tune";
 import MapIcon from "@mui/icons-material/Map";
 import ListIcon from "@mui/icons-material/List";
 import SearchIcon from "@mui/icons-material/Search";
-import MyLocationIcon from "@mui/icons-material/MyLocation";
 import MainLayout from "../../components/layout/MainLayout";
 import medicalCenterService, {
   MedicalCenter,
@@ -69,7 +68,7 @@ const MedicalCentersPage: React.FC = () => {
   } | null>(null);
   const [radius, setRadius] = useState(50); // km
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
-  const [limit, setLimit] = useState(20);
+  const [limit] = useState(20);
 
   // Manual location input
   const [manualLat, setManualLat] = useState("");

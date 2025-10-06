@@ -41,7 +41,6 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
     register,
     handleSubmit,
     reset,
-    watch,
     formState: { errors, isSubmitting },
   } = useForm<EditProfileFormData>();
 
