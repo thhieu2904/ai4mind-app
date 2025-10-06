@@ -36,8 +36,8 @@ class Settings(BaseSettings):
     # Environment
     ENVIRONMENT: str = "development"  # development, staging, production
     
-    # File Storage
-    FILE_STORAGE_PATH: str = "./storage/audio"
+    # File Storage (use /tmp for production - always writable on Linux)
+    FILE_STORAGE_PATH: str = "./storage/audio"  # Local dev default
     MAX_FILE_SIZE_MB: int = 10
     
     # Transcription Service Selection

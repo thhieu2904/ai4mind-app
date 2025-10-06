@@ -141,19 +141,24 @@ async def analyze_voice(
 
     
     # Save uploaded file temporarily
-    # On Render: /app/storage is mounted disk - create subdirs carefully
-    storage_path = Path(settings.FILE_STORAGE_PATH)
+    # Production: Use /tmp (always writable on Linux)
+    # Development: Use configured path
+    if settings.is_production:
+        storage_path = Path("/tmp/ai4mind-voice")
+    else:
+        storage_path = Path(settings.FILE_STORAGE_PATH)
+    
     temp_dir = storage_path / "temp"
     
-    # Create directories only if they don't exist (avoid permission issues)
+    # Create directories if needed
     try:
         temp_dir.mkdir(parents=True, exist_ok=True)
-    except PermissionError:
-        # If storage_path itself doesn't exist, create it
-        if not storage_path.exists():
-            storage_path.mkdir(parents=False, exist_ok=True)
-        if not temp_dir.exists():
-            temp_dir.mkdir(parents=False, exist_ok=True)
+    except Exception as e:
+        logger.error(f"Failed to create temp directory: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Storage initialization failed: {str(e)}"
+        )
     
     temp_file_path = temp_dir / f"{analysis_id}{file_ext}"
     

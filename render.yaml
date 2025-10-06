@@ -86,11 +86,7 @@ services:
 
     healthCheckPath: /health
 
-    # Disk for audio file storage
-    disk:
-      name: voice-storage
-      mountPath: /app/storage
-      sizeGB: 1
+    # Note: Using /tmp for file storage (no disk mount needed)
 
     envVars:
       # Database
@@ -117,9 +113,9 @@ services:
       - key: PORT
         value: $PORT
 
-      # File Storage
+      # File Storage (using /tmp - always writable on Linux)
       - key: FILE_STORAGE_PATH
-        value: /app/storage/audio
+        value: /tmp/ai4mind-voice/audio
       - key: MAX_FILE_SIZE_MB
         value: 10
 
@@ -153,33 +149,3 @@ services:
         #   - DEEPGRAM_API_KEY (free 12,000 min/month)
         #   - See .secrets/HYBRID_VOICE_DEPLOY.md for setup
         # ==================================================
-        fromService:
-          type: web
-          name: ai4mind-ai-service
-          envVarKey: RENDER_EXTERNAL_URL
-
-      # Server
-      - key: HOST
-        value: 0.0.0.0
-      - key: PORT
-        value: $PORT
-
-      # File Storage
-      - key: FILE_STORAGE_PATH
-        value: /app/storage/audio
-      - key: MAX_FILE_SIZE_MB
-        value: 10
-
-      # Whisper
-      - key: WHISPER_MODEL
-        value: base
-
-      # Processing
-      - key: ENABLE_EMOTION_DETECTION
-        value: true
-      - key: ENABLE_TEXT_ANALYSIS
-        value: true
-
-      # Application
-      - key: ENVIRONMENT
-        value: production
