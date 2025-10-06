@@ -53,6 +53,27 @@ CREATE TABLE public.conversations (
   CONSTRAINT conversations_pkey PRIMARY KEY (id),
   CONSTRAINT conversations_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id)
 );
+CREATE TABLE public.counselor_conversations (
+  id bigint NOT NULL DEFAULT nextval('counselor_conversations_id_seq'::regclass),
+  student_id integer NOT NULL,
+  counselor_id integer NOT NULL,
+  status character varying NOT NULL DEFAULT 'active'::character varying CHECK (status::text = ANY (ARRAY['active'::character varying, 'closed'::character varying, 'archived'::character varying]::text[])),
+  last_message_at timestamp with time zone NOT NULL DEFAULT now(),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT counselor_conversations_pkey PRIMARY KEY (id),
+  CONSTRAINT fk_counselor_conversations_student FOREIGN KEY (student_id) REFERENCES public.students(id),
+  CONSTRAINT fk_counselor_conversations_counselor FOREIGN KEY (counselor_id) REFERENCES public.counselors(id)
+);
+CREATE TABLE public.counselor_messages (
+  id bigint NOT NULL DEFAULT nextval('counselor_messages_id_seq'::regclass),
+  conversation_id bigint NOT NULL,
+  sender_type character varying NOT NULL CHECK (sender_type::text = ANY (ARRAY['student'::character varying, 'counselor'::character varying]::text[])),
+  content text NOT NULL,
+  is_read boolean NOT NULL DEFAULT false,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT counselor_messages_pkey PRIMARY KEY (id),
+  CONSTRAINT fk_counselor_messages_conversation FOREIGN KEY (conversation_id) REFERENCES public.counselor_conversations(id)
+);
 CREATE TABLE public.counselors (
   id integer NOT NULL DEFAULT nextval('counselors_id_seq'::regclass),
   user_id integer NOT NULL UNIQUE,
