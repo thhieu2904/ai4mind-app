@@ -28,13 +28,16 @@
 }
 
 .header-logo {
-  font-size: 1.5rem;
-  font-weight: 700;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin: 0;
+  height: 40px;
+  width: auto;
+  max-width: 150px;
+  object-fit: contain;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.header-logo:hover {
+  transform: scale(1.05);
 }
 
 .header-right {
@@ -69,6 +72,7 @@
 /* Responsive */
 @media (max-width: 640px) {
   .header-logo {
-    font-size: 1.25rem;
+    height: 32px;
+    max-width: 120px;
   }
 }

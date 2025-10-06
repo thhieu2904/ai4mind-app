@@ -102,11 +102,23 @@ const Header: React.FC = () => {
     navigate("/login");
   };
 
+  const handleLogoClick = () => {
+    navigate("/dashboard");
+  };
+
   return (
     <header className="mobile-header">
       <div className="header-content">
         <div className="header-left">
-          <h1 className="header-logo">ai4mind</h1>
+          <img
+            src="/logo.png"
+            alt="AI4Mind Logo"
+            className="header-logo"
+            onClick={handleLogoClick}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === "Enter" && handleLogoClick()}
+          />
         </div>
 
         <div className="header-right">
