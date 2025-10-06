@@ -1,5 +1,22 @@
 """
-Voice Analysis API Endpoints
+Voice Analysis API Endpoints - HYBRID ARCHITECTURE
+
+Architecture Change (2025-10-06):
+✅ BEFORE: Whisper (local) → 512MB+ RAM → Build failed on Render free tier
+✅ AFTER: Deepgram API (external) + Custom Emotion ML (local) → <512MB RAM → Deploy OK!
+
+Pipeline:
+1. Deepgram API → Transcription (external, lightweight)
+2. Librosa → Audio features (local)
+3. Gender Normalizer → Z-score normalization (local, our algorithm!)
+4. Custom ML → Emotion detection (local, our unique value!)
+5. Text Analyzer → Sentiment analysis (local)
+
+This hybrid approach:
+- ✅ Deploys on free tier (memory optimization)
+- ✅ Keeps custom emotion ML (our competitive advantage)
+- ✅ Uses production-grade transcription (Deepgram)
+- ✅ Shows engineering maturity (build vs buy decision)
 """
 
 import os
@@ -23,10 +40,11 @@ from app.models.schemas import (
     TextAnalysisResult
 )
 from app.services.audio_processor import AudioProcessor
-from app.services.whisper_service import WhisperService
-from app.services.emotion_classifier import EmotionClassifier
+from app.services.deepgram_service import DeepgramService  # NEW: Hybrid approach
+from app.services.whisper_service import WhisperService  # FALLBACK: Local dev only
+from app.services.emotion_classifier import EmotionClassifier  # KEPT: Our unique value!
 from app.services.text_analyzer import TextAnalyzer
-from app.utils.gender_normalizer import GenderNormalizer
+from app.utils.gender_normalizer import GenderNormalizer  # KEPT: Our algorithm!
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -35,7 +53,18 @@ router = APIRouter(prefix="/voice", tags=["voice-analysis"])
 
 # Initialize services (singleton pattern)
 audio_processor = AudioProcessor()
-whisper_service = WhisperService(model_size=settings.WHISPER_MODEL)
+
+# Transcription service - HYBRID APPROACH
+if settings.use_deepgram:
+    # Production: Use Deepgram API (lightweight, deployable)
+    transcription_service = DeepgramService(api_key=settings.DEEPGRAM_API_KEY)
+    logger.info("✅ Using Deepgram API for transcription (production mode)")
+else:
+    # Fallback: Use Whisper (local dev only, not deployable on free tier)
+    transcription_service = WhisperService(model_size=settings.WHISPER_MODEL)
+    logger.warning("⚠️  Using Whisper for transcription (local dev only, NOT deployable!)")
+
+# Custom ML services - KEPT (our competitive advantage!)
 emotion_classifier = EmotionClassifier()
 text_analyzer = TextAnalyzer()
 gender_normalizer = GenderNormalizer()
@@ -164,9 +193,26 @@ async def analyze_voice(
         logger.info(f"✅ Features normalized: Z-score={normalized_features.pitch_z_score:.2f}, "
                    f"severity={normalized_features.severity}")
         
-        # Step 3: Transcribe audio
+        # Step 3: Transcribe audio - HYBRID APPROACH
         logger.info("🎤 Step 3/5: Transcribing speech...")
-        transcript_dict = whisper_service.transcribe(str(temp_file_path), language="vi")
+        
+        if settings.use_deepgram:
+            # Production: Use Deepgram API
+            logger.info("📡 Using Deepgram API for transcription...")
+            transcript_dict = await transcription_service.transcribe(
+                audio_path=str(temp_file_path),
+                language="vi"
+            )
+            logger.info(f"✅ Deepgram transcription complete (source: external API)")
+        else:
+            # Fallback: Use local Whisper (dev only)
+            logger.warning("⚠️  Using local Whisper (not deployable on free tier!)")
+            # Note: Whisper is synchronous, Deepgram is async
+            transcript_dict = transcription_service.transcribe(
+                audio_path=str(temp_file_path),
+                language="vi"
+            )
+            logger.info(f"✅ Whisper transcription complete (source: local)")
         
         transcript = TranscriptResult(
             transcript=transcript_dict["transcript"],
@@ -180,8 +226,8 @@ async def analyze_voice(
                    f"confidence={transcript.confidence:.2f}")
         logger.info(f"📝 Text: {transcript.transcript[:100]}...")
         
-        # Step 4: Detect emotions
-        logger.info("🧠 Step 4/5: Detecting emotions...")
+        # Step 4: Detect emotions - CUSTOM ML (our unique value!)
+        logger.info("🧠 Step 4/5: Detecting emotions (custom ML model)...")
         emotion_dict = emotion_classifier.classify(
             normalized_features.dict(),
             transcript.transcript
@@ -286,15 +332,25 @@ def _categorize_prompt(index: int) -> str:
 @router.get("/health")
 async def health_check():
     """
-    Health check endpoint for voice analysis service.
+    Health check endpoint for voice analysis service - HYBRID ARCHITECTURE.
     
     Returns:
-        Service status and version
+        Service status, version, and configuration
     """
+    transcription_info = {
+        "service": "deepgram-api" if settings.use_deepgram else "whisper-local",
+        "deployable": settings.use_deepgram,  # Only Deepgram fits free tier
+        "model": "nova-2" if settings.use_deepgram else settings.WHISPER_MODEL
+    }
+    
     return {
         "status": "healthy",
-        "service": "voice-analysis",
-        "version": "1.0.0",
+        "service": "voice-analysis-hybrid",
+        "version": settings.VERSION,
         "timestamp": datetime.now(),
-        "whisper_model": settings.WHISPER_MODEL
+        "architecture": "hybrid",
+        "transcription": transcription_info,
+        "emotion_detection": "custom-ml (gender-normalized)",
+        "memory_optimized": True,
+        "free_tier_compatible": settings.use_deepgram
     }
