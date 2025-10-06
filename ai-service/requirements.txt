@@ -27,7 +27,7 @@ bcrypt==4.1.1
 redis==5.0.1
 hiredis==2.2.3
 
-# HTTP Client (for microservices) # httpx==0.25.2
+# HTTP Client (for microservices) 
 
 aiohttp==3.9.1
 
