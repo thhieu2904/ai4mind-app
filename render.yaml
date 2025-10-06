@@ -1,0 +1,130 @@
+# ==================================================
+# AI4Mind - Render Blueprint Configuration
+# ==================================================
+# Automatically deploy both backend services to Render
+# https://render.com/docs/blueprint-spec
+
+services:
+  # ==================================================
+  # AI Service (API Gateway)
+  # ==================================================
+  - type: web
+    name: ai4mind-ai-service
+    runtime: python
+    region: singapore # Closest to Vietnam
+    plan: free # Change to 'starter' for production ($7/month)
+
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+
+    rootDir: ai-service
+
+    healthCheckPath: /health
+
+    envVars:
+      # Database (Supabase)
+      - key: DATABASE_URL
+        sync: false # Set manually in Render Dashboard
+      - key: SUPABASE_PROJECT_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+
+      # AI Service
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.0-flash
+
+      # JWT & Security
+      - key: JWT_SECRET_KEY
+        sync: false # Generate new for production!
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 30
+      - key: REFRESH_TOKEN_EXPIRE_DAYS
+        value: 7
+
+      # Microservices (will auto-populate)
+      - key: VOICE_SERVICE_URL
+        fromService:
+          type: web
+          name: ai4mind-voice-service
+          envVarKey: RENDER_EXTERNAL_URL
+
+      # Frontend & CORS (update after frontend deploy)
+      - key: FRONTEND_URL
+        value: https://ai4mind.vercel.app # Update this!
+      - key: CORS_ORIGINS
+        value: https://ai4mind.vercel.app # Update this!
+
+      # Application
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: False
+      - key: LOG_LEVEL
+        value: INFO
+
+  # ==================================================
+  # Voice Service (Audio Analysis)
+  # ==================================================
+  - type: web
+    name: ai4mind-voice-service
+    runtime: python
+    region: singapore
+    plan: free # Upgrade to 'starter' for better performance
+
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+
+    rootDir: voice-service
+
+    healthCheckPath: /health
+
+    # Disk for audio file storage
+    disk:
+      name: voice-storage
+      mountPath: /app/storage
+      sizeGB: 1 # Free tier: 1GB
+
+    envVars:
+      # Database
+      - key: DATABASE_URL
+        sync: false
+
+      # AI Service URL (auto-populated)
+      - key: AI_SERVICE_URL
+        fromService:
+          type: web
+          name: ai4mind-ai-service
+          envVarKey: RENDER_EXTERNAL_URL
+
+      # Server
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: $PORT
+
+      # File Storage
+      - key: FILE_STORAGE_PATH
+        value: /app/storage/audio
+      - key: MAX_FILE_SIZE_MB
+        value: 10
+
+      # Whisper
+      - key: WHISPER_MODEL
+        value: base
+
+      # Processing
+      - key: ENABLE_EMOTION_DETECTION
+        value: true
+      - key: ENABLE_TEXT_ANALYSIS
+        value: true
+
+      # Application
+      - key: ENVIRONMENT
+        value: production
