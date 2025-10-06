@@ -29,8 +29,8 @@ CREATE TABLE public.alembic_version (
   CONSTRAINT alembic_version_pkey PRIMARY KEY (version_num)
 );
 CREATE TABLE public.assessments (
-  id integer NOT NULL DEFAULT nextval('assessments_id_seq'::regclass),
-  student_id integer NOT NULL,
+  id bigint NOT NULL DEFAULT nextval('assessments_id_seq'::regclass),
+  student_id bigint NOT NULL,
   answers json NOT NULL,
   total_score integer NOT NULL,
   severity_level character varying NOT NULL,
@@ -43,8 +43,8 @@ CREATE TABLE public.assessments (
   CONSTRAINT assessments_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id)
 );
 CREATE TABLE public.conversations (
-  id integer NOT NULL DEFAULT nextval('conversations_id_seq'::regclass),
-  student_id integer NOT NULL,
+  id bigint NOT NULL DEFAULT nextval('conversations_id_seq'::regclass),
+  student_id bigint NOT NULL,
   title character varying,
   is_active boolean,
   created_at timestamp with time zone DEFAULT now(),
@@ -52,6 +52,28 @@ CREATE TABLE public.conversations (
   last_message_at timestamp with time zone,
   CONSTRAINT conversations_pkey PRIMARY KEY (id),
   CONSTRAINT conversations_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id)
+);
+CREATE TABLE public.counselor_conversations (
+  id bigint NOT NULL DEFAULT nextval('counselor_conversations_id_seq'::regclass),
+  student_id bigint NOT NULL,
+  counselor_id bigint NOT NULL,
+  status character varying NOT NULL DEFAULT 'active'::character varying CHECK (status::text = ANY (ARRAY['active'::character varying, 'closed'::character varying, 'archived'::character varying]::text[])),
+  last_message_at timestamp with time zone NOT NULL DEFAULT now(),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone,
+  CONSTRAINT counselor_conversations_pkey PRIMARY KEY (id),
+  CONSTRAINT fk_counselor_conversations_student FOREIGN KEY (student_id) REFERENCES public.students(id),
+  CONSTRAINT fk_counselor_conversations_counselor FOREIGN KEY (counselor_id) REFERENCES public.counselors(id)
+);
+CREATE TABLE public.counselor_messages (
+  id bigint NOT NULL DEFAULT nextval('counselor_messages_id_seq'::regclass),
+  conversation_id bigint NOT NULL,
+  sender_type character varying NOT NULL CHECK (sender_type::text = ANY (ARRAY['student'::character varying, 'counselor'::character varying]::text[])),
+  content text NOT NULL,
+  is_read boolean NOT NULL DEFAULT false,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT counselor_messages_pkey PRIMARY KEY (id),
+  CONSTRAINT fk_counselor_messages_conversation FOREIGN KEY (conversation_id) REFERENCES public.counselor_conversations(id)
 );
 CREATE TABLE public.counselors (
   id integer NOT NULL DEFAULT nextval('counselors_id_seq'::regclass),
@@ -63,6 +85,8 @@ CREATE TABLE public.counselors (
   phone_number character varying,
   office_location character varying,
   is_available boolean,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone,
   CONSTRAINT counselors_pkey PRIMARY KEY (id),
   CONSTRAINT counselors_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
@@ -95,10 +119,12 @@ CREATE TABLE public.messages (
   CONSTRAINT messages_voice_analysis_id_fkey FOREIGN KEY (voice_analysis_id) REFERENCES public.voice_analyses(id)
 );
 CREATE TABLE public.parent_consents (
-  id integer NOT NULL DEFAULT nextval('parent_consents_id_seq'::regclass),
-  student_id integer NOT NULL,
-  parent_id integer NOT NULL,
+  id bigint NOT NULL DEFAULT nextval('parent_consents_id_seq'::regclass),
+  student_id bigint NOT NULL,
+  parent_id bigint NOT NULL,
   is_approved integer,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone,
   CONSTRAINT parent_consents_pkey PRIMARY KEY (id),
   CONSTRAINT parent_consents_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id),
   CONSTRAINT parent_consents_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.parents(id)
@@ -109,6 +135,8 @@ CREATE TABLE public.parents (
   phone_number character varying,
   address text,
   occupation character varying,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone,
   CONSTRAINT parents_pkey PRIMARY KEY (id),
   CONSTRAINT parents_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
@@ -130,7 +158,7 @@ CREATE TABLE public.students (
   CONSTRAINT fk_students_emergency_contact_parent FOREIGN KEY (emergency_contact_parent_id) REFERENCES public.parents(id)
 );
 CREATE TABLE public.users (
-  id integer NOT NULL DEFAULT nextval('users_id_seq'::regclass),
+  id bigint NOT NULL DEFAULT nextval('users_id_seq'::regclass),
   email character varying NOT NULL,
   hashed_password character varying NOT NULL,
   full_name character varying NOT NULL,
