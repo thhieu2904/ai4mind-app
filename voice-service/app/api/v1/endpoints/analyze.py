@@ -141,8 +141,19 @@ async def analyze_voice(
 
     
     # Save uploaded file temporarily
-    temp_dir = Path(settings.FILE_STORAGE_PATH) / "temp"
-    temp_dir.mkdir(parents=True, exist_ok=True)
+    # On Render: /app/storage is mounted disk - create subdirs carefully
+    storage_path = Path(settings.FILE_STORAGE_PATH)
+    temp_dir = storage_path / "temp"
+    
+    # Create directories only if they don't exist (avoid permission issues)
+    try:
+        temp_dir.mkdir(parents=True, exist_ok=True)
+    except PermissionError:
+        # If storage_path itself doesn't exist, create it
+        if not storage_path.exists():
+            storage_path.mkdir(parents=False, exist_ok=True)
+        if not temp_dir.exists():
+            temp_dir.mkdir(parents=False, exist_ok=True)
     
     temp_file_path = temp_dir / f"{analysis_id}{file_ext}"
     
