@@ -25,12 +25,12 @@ class AudioProcessor:
     - MFCCs: mel-frequency cepstral coefficients (optional)
     """
     
-    def __init__(self, sample_rate: int = 22050):
+    def __init__(self, sample_rate: int = 16000):
         """
         Initialize audio processor.
         
         Args:
-            sample_rate: Target sample rate for processing
+            sample_rate: Target sample rate for processing (16kHz for memory optimization)
         """
         self.sample_rate = sample_rate
     

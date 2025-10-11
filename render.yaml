@@ -80,7 +80,8 @@ services:
     plan: free # NOW DEPLOYABLE! (memory optimized)
 
     buildCommand: pip install --upgrade pip && pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    # ✅ MEMORY OPTIMIZATION: Limit concurrency to prevent memory spikes
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1 --limit-concurrency 1
 
     rootDir: voice-service
 

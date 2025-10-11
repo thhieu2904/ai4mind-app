@@ -22,6 +22,7 @@ This hybrid approach:
 import os
 import uuid
 import logging
+import gc  # ✅ Add garbage collection for memory optimization
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
@@ -265,6 +266,9 @@ async def analyze_voice(
         logger.info(f"✅ Text analysis complete: sentiment={text_analysis.sentiment:.2f}, "
                    f"dominant={text_analysis.dominant_emotion}")
         
+        # ✅ Free memory after processing
+        gc.collect()
+        
         # Calculate processing time
         processing_time = time.time() - start_time
         
@@ -306,6 +310,9 @@ async def analyze_voice(
                 logger.info(f"🗑️ Temporary file deleted: {temp_file_path.name}")
             except Exception as e:
                 logger.warning(f"⚠️ Could not delete temp file: {e}")
+        
+        # ✅ Force garbage collection to free memory
+        gc.collect()
 
 
 @router.get("/prompts")
