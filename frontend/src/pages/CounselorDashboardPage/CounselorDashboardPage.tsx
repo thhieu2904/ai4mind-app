@@ -34,6 +34,8 @@ const CounselorDashboardPage: React.FC = () => {
 
   useEffect(() => {
     loadConversations();
+    const interval = setInterval(loadConversations, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const loadConversations = async () => {

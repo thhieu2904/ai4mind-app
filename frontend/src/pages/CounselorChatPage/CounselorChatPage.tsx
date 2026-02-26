@@ -61,7 +61,7 @@ const CounselorChatPage: React.FC = () => {
     scrollToBottom();
   }, [messages]);
 
-  // Load conversation detail on mount
+  // Load conversation detail on mount + polling mỗi 3 giây
   useEffect(() => {
     if (!conversationId) {
       setError("Conversation ID không hợp lệ");
@@ -70,6 +70,24 @@ const CounselorChatPage: React.FC = () => {
     }
 
     loadConversation();
+
+    const interval = setInterval(async () => {
+      try {
+        const data = await getConversationDetail(Number(conversationId));
+        // Chỉ merge messages mới (không overwrite để tránh flicker)
+        setMessages((prev) => {
+          const existingIds = new Set(prev.map((m) => m.id));
+          const newMsgs = data.messages.filter((m) => !existingIds.has(m.id));
+          if (newMsgs.length === 0) return prev;
+          return [...prev, ...newMsgs];
+        });
+        setConversationDetail(data);
+      } catch {
+        // ignore polling errors silently
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
   }, [conversationId]);
 
   // Mark all messages as read khi vào page
