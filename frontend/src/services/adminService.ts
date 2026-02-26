@@ -30,31 +30,31 @@ const AdminService = {
     const params: Record<string, string> = {};
     if (role) params.role = role;
     if (search) params.search = search;
-    const res = await api.get("/admin/users", { params });
+    const res = await api.get("/api/v1/admin/users", { params });
     return res.data;
   },
 
   createUser: async (data: CreateUserRequest): Promise<AdminUser> => {
-    const res = await api.post("/admin/users", data);
+    const res = await api.post("/api/v1/admin/users", data);
     return res.data;
   },
 
   updateUser: async (id: number, data: UpdateUserRequest): Promise<AdminUser> => {
-    const res = await api.put(`/admin/users/${id}`, data);
+    const res = await api.put(`/api/v1/admin/users/${id}`, data);
     return res.data;
   },
 
   resetPassword: async (id: number, newPassword: string): Promise<void> => {
-    await api.put(`/admin/users/${id}/reset-password`, { new_password: newPassword });
+    await api.put(`/api/v1/admin/users/${id}/reset-password`, { new_password: newPassword });
   },
 
   toggleActive: async (id: number): Promise<AdminUser> => {
-    const res = await api.put(`/admin/users/${id}/toggle-active`);
+    const res = await api.put(`/api/v1/admin/users/${id}/toggle-active`);
     return res.data;
   },
 
   deleteUser: async (id: number): Promise<void> => {
-    await api.delete(`/admin/users/${id}`);
+    await api.delete(`/api/v1/admin/users/${id}`);
   },
 };
 
