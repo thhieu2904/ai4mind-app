@@ -48,7 +48,7 @@ const ProfilePage: React.FC = () => {
           id: studentData.user_id,
           email: studentData.email || "",
           full_name: studentData.full_name || "",
-          role: "student",
+          role: "STUDENT",
           is_active: true,
           created_at: studentData.created_at || new Date().toISOString(),
           last_login: undefined,
@@ -93,7 +93,7 @@ const ProfilePage: React.FC = () => {
       setSaveLoading(true);
 
       // Update student profile (single API call with all data including full_name)
-      if (user?.role === "student") {
+      if (user?.role === "STUDENT") {
         const studentData: Partial<StudentProfile> & { full_name?: string } = {
           full_name: data.full_name, // Include user basic info
           date_of_birth: data.date_of_birth,
@@ -212,7 +212,7 @@ const ProfilePage: React.FC = () => {
                   loading={loading}
                 />
 
-                {user.role === "student" && (
+                {user.role === "STUDENT" && (
                   <AcademicInfoCard
                     studentProfile={studentProfile || undefined}
                     loading={loading}

@@ -81,7 +81,7 @@ const VoiceAnalysisPage: React.FC = () => {
   useEffect(() => {
     const loadStudentProfile = async () => {
       try {
-        if (user?.role === "student") {
+        if (user?.role === "STUDENT") {
           const response = await api.get("/api/v1/students/me");
           const studentProfile = response.data;
           if (studentProfile.gender) {
@@ -147,8 +147,7 @@ const VoiceAnalysisPage: React.FC = () => {
 
     // FIX: Support both uppercase and lowercase roles (backend uses UPPERCASE enum)
     console.log("🔍 User role check:", user?.role, "Type:", typeof user?.role);
-    const normalizedRole = user?.role?.toLowerCase();
-    if (normalizedRole === "student") {
+    if (user?.role === "STUDENT") {
       console.log("✅ User is student, loading assessments...");
       loadAssessments();
     } else {

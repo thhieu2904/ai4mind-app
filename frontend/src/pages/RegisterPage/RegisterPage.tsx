@@ -12,7 +12,7 @@ const RegisterPage: React.FC = () => {
     email: "",
     password: "",
     full_name: "",
-    role: "student",
+    role: "STUDENT",
     date_of_birth: "",
     gender: undefined,
     phone: "",
@@ -80,7 +80,7 @@ const RegisterPage: React.FC = () => {
     }
 
     // Validate date of birth for students (important for GAD-7)
-    if (formData.role === "student" && formData.date_of_birth) {
+    if (formData.role === "STUDENT" && formData.date_of_birth) {
       const age = calculateAge(formData.date_of_birth);
       if (age < 13) {
         setError("Học sinh phải từ 13 tuổi trở lên");
@@ -327,13 +327,13 @@ const RegisterPage: React.FC = () => {
               className="form-select"
               disabled={loading}
             >
-              <option value="student">Học sinh / Sinh viên</option>
-              <option value="parent">Phụ huynh</option>
+              <option value="STUDENT">Học sinh / Sinh viên</option>
+              <option value="PARENT">Phụ huynh</option>
             </select>
           </div>
 
           {/* Student Code - Optional for students */}
-          {formData.role === "student" && (
+          {formData.role === "STUDENT" && (
             <>
               <div className="form-group">
                 <label htmlFor="student_code" className="form-label">

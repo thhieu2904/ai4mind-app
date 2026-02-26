@@ -2,7 +2,7 @@ export interface User {
   id: number;
   email: string;
   full_name: string;
-  role: "student" | "parent" | "counselor" | "admin";
+  role: "STUDENT" | "PARENT" | "COUNSELOR" | "ADMIN";
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -36,7 +36,7 @@ export interface RegisterRequest {
   email: string;
   password: string;
   full_name: string;
-  role: "student" | "parent";
+  role: "STUDENT" | "PARENT";
 
   // Important for GAD-7 assessment
   date_of_birth?: string; // YYYY-MM-DD format
