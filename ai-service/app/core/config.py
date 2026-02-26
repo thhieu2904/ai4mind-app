@@ -54,7 +54,9 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> List[str]:
         """Parse CORS_ORIGINS string to list"""
-        return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
+        origins = [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
+        # Fallback: allow all origins if none configured (prevents 400 on OPTIONS)
+        return origins if origins else ["*"]
     
     # File Upload
     UPLOAD_DIR: str = "../shared/audio-files"

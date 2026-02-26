@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
 import MainLayout from "../../components/layout/MainLayout";
 import PageHeaderCard from "../../components/common/PageHeaderCard";
 import {
@@ -12,6 +12,12 @@ import "./DashboardPage.css";
 const DashboardPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  // Redirect admin/counselor to their dedicated pages
+  const role = (user?.role as string)?.toUpperCase();
+  if (role === "ADMIN") return <Navigate to="/admin/dashboard" replace />;
+  if (role === "COUNSELOR") return <Navigate to="/counselor/chats" replace />;
+
   const [welcomeData, setWelcomeData] = useState<DashboardWelcomeData | null>(
     null
   );
@@ -19,8 +25,14 @@ const DashboardPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchWelcomeData();
-  }, []);
+    // Only fetch student-specific data for STUDENT role
+    if (user?.role === "STUDENT") {
+      fetchWelcomeData();
+    } else {
+      // ADMIN, COUNSELOR: dùng data từ auth context, không cần gọi API
+      setLoading(false);
+    }
+  }, [user]);
 
   const fetchWelcomeData = async () => {
     try {
@@ -75,11 +87,24 @@ const DashboardPage: React.FC = () => {
             variant="primary"
             gradient
           />
-        ) : error ? (
+        ) : user?.role === "STUDENT" && error ? (
           <PageHeaderCard
             icon="🏠"
             title="Dashboard"
             subtitle={error}
+            variant="primary"
+            gradient
+          />
+        ) : user?.role !== "STUDENT" ? (
+          // ADMIN / COUNSELOR: hiển thị welcome đơn giản không cần gọi API
+          <PageHeaderCard
+            icon="👋"
+            title={`Xin chào, ${user?.full_name || "bạn"}!`}
+            subtitle={
+              user?.role === "ADMIN"
+                ? "🛡️ Quản trị viên hệ thống"
+                : "🩺 Tư vấn viên"
+            }
             variant="primary"
             gradient
           />

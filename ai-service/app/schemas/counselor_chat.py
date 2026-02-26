@@ -70,6 +70,8 @@ class ConversationResponse(BaseModel):
     last_message_at: datetime
     created_at: datetime
     unread_count: Optional[int] = 0  # Computed field
+    student_name: Optional[str] = None  # Populated for counselor view
+    counselor_name: Optional[str] = None  # Populated for student view
 
     class Config:
         from_attributes = True

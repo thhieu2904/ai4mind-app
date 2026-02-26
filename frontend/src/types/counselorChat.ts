@@ -21,6 +21,8 @@ export interface CounselorConversation {
   last_message_at: string; // ISO datetime
   created_at: string; // ISO datetime
   unread_count?: number;
+  student_name?: string;   // populated for counselor view
+  counselor_name?: string; // populated for student view
 }
 
 export interface CounselorMessage {

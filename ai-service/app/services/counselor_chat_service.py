@@ -202,6 +202,29 @@ class CounselorChatService:
         )
         
         return conversations
+
+    def get_conversations_for_counselor(self, counselor_id: int) -> List[CounselorConversation]:
+        """
+        Lấy all conversations của counselor (sorted by last_message_at)
+        
+        Args:
+            counselor_id: ID của counselor profile
+            
+        Returns:
+            List[CounselorConversation]: Danh sách conversations
+        """
+        from app.models.student import Student
+        conversations = (
+            self.db.query(CounselorConversation)
+            .filter(CounselorConversation.counselor_id == counselor_id)
+            .options(
+                joinedload(CounselorConversation.student).joinedload(Student.user)
+            )
+            .order_by(desc(CounselorConversation.last_message_at))
+            .all()
+        )
+        
+        return conversations
     
     # ============================================
     # MESSAGE MANAGEMENT

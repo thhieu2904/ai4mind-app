@@ -246,11 +246,8 @@ async def list_my_conversations(
             student = get_student_from_user(current_user, db)
             conversations = chat_service.get_conversations_for_student(student.id)
         elif current_user.role == UserRole.COUNSELOR:
-            # TODO: Implement get_conversations_for_counselor
-            raise HTTPException(
-                status_code=status.HTTP_501_NOT_IMPLEMENTED,
-                detail="Counselor conversation list not yet implemented"
-            )
+            counselor = get_counselor_from_user(current_user, db)
+            conversations = chat_service.get_conversations_for_counselor(counselor.id)
         else:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -261,6 +258,15 @@ async def list_my_conversations(
         result = []
         for conv in conversations:
             unread_count = chat_service._count_unread_messages(conv.id, current_user.role)
+            student_name = None
+            counselor_name = None
+            try:
+                if hasattr(conv, "student") and conv.student and hasattr(conv.student, "user"):
+                    student_name = conv.student.user.full_name
+                if hasattr(conv, "counselor") and conv.counselor and hasattr(conv.counselor, "user"):
+                    counselor_name = conv.counselor.user.full_name
+            except Exception:
+                pass
             result.append(ConversationResponse(
                 id=conv.id,
                 student_id=conv.student_id,
@@ -268,7 +274,9 @@ async def list_my_conversations(
                 status=conv.status,
                 last_message_at=conv.last_message_at,
                 created_at=conv.created_at,
-                unread_count=unread_count
+                unread_count=unread_count,
+                student_name=student_name,
+                counselor_name=counselor_name,
             ))
         
         return result

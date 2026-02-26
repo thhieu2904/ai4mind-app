@@ -2,12 +2,13 @@
 API v1 router
 """
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, assessments, voice_analysis, students, combined_assessment, assessment_voice, ai_chat, medical_centers, counselor_chat, export, dashboard
+from app.api.v1.endpoints import auth, assessments, voice_analysis, students, combined_assessment, assessment_voice, ai_chat, medical_centers, counselor_chat, export, dashboard, admin
 
 api_router = APIRouter()
 
 # Include all endpoint routers
 api_router.include_router(auth.router, prefix="/auth", tags=["Authentication"])
+api_router.include_router(admin.router, prefix="/admin", tags=["Admin"])
 api_router.include_router(students.router, prefix="/students", tags=["Students"])
 api_router.include_router(assessments.router, prefix="/assessments", tags=["Assessments"])
 api_router.include_router(assessment_voice.router, prefix="/assessments", tags=["Assessment + Voice"])  # New sequential flow!

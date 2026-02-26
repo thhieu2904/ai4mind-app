@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
-import { AuthProvider } from "./contexts/AuthContext";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
@@ -20,6 +20,9 @@ import CounselorListPage from "./pages/CounselorListPage";
 import CounselorChatPage from "./pages/CounselorChatPage";
 import SupportHubPage from "./pages/SupportHubPage";
 import RatingPage from "./pages/RatingPage";
+import AdminDashboardPage from "./pages/AdminPage/AdminDashboardPage";
+import AdminUsersPage from "./pages/AdminPage/AdminUsersPage";
+import CounselorDashboardPage from "./pages/CounselorDashboardPage/CounselorDashboardPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -51,6 +54,17 @@ const theme = createTheme({
     ].join(","),
   },
 });
+
+// Smart root redirect based on role
+const RootRedirect: React.FC = () => {
+  const { user, isAuthenticated, loading } = useAuth();
+  if (loading) return null;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  const role = (user?.role as string)?.toUpperCase();
+  if (role === "ADMIN") return <Navigate to="/admin/dashboard" replace />;
+  if (role === "COUNSELOR") return <Navigate to="/counselor/chats" replace />;
+  return <Navigate to="/dashboard" replace />;
+};
 
 function App() {
   return (
@@ -191,11 +205,39 @@ function App() {
                 }
               />
 
-              {/* Redirect root to dashboard */}
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              {/* Admin Routes */}
+              <Route
+                path="/admin/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <AdminDashboardPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/users"
+                element={
+                  <ProtectedRoute>
+                    <AdminUsersPage />
+                  </ProtectedRoute>
+                }
+              />
 
-              {/* 404 - Redirect to dashboard */}
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              {/* Counselor Routes */}
+              <Route
+                path="/counselor/chats"
+                element={
+                  <ProtectedRoute>
+                    <CounselorDashboardPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Redirect root to role-based home */}
+              <Route path="/" element={<RootRedirect />} />
+
+              {/* 404 - Redirect to role-based home */}
+              <Route path="*" element={<RootRedirect />} />
             </Routes>
           </AuthProvider>
         </BrowserRouter>
