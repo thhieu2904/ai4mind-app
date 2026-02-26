@@ -266,7 +266,7 @@ class CounselorChatService:
         # Verify permission
         if sender_type == "student":
             student = self.db.query(User).filter(User.id == user_id).first()
-            if not student or student.role != "student":
+            if not student or student.role != UserRole.STUDENT:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Only students can send as 'student'"
@@ -281,7 +281,7 @@ class CounselorChatService:
                 )
         elif sender_type == "counselor":
             counselor_user = self.db.query(User).filter(User.id == user_id).first()
-            if not counselor_user or counselor_user.role != "counselor":
+            if not counselor_user or counselor_user.role != UserRole.COUNSELOR:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Only counselors can send as 'counselor'"

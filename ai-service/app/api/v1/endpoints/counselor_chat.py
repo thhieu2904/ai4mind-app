@@ -68,7 +68,7 @@ async def list_available_counselors(
         List[CounselorBasicInfo]: Danh sách counselors với thông tin cơ bản
     """
     # Verify student role
-    if current_user.role != "student":
+    if current_user.role != UserRole.STUDENT:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only students can view counselor list"
@@ -120,7 +120,7 @@ async def create_conversation(
         ConversationResponse: Conversation đã tạo
     """
     # Verify student role
-    if current_user.role != "student":
+    if current_user.role != UserRole.STUDENT:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only students can create conversations with counselors"

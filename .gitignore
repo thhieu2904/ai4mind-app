@@ -7,6 +7,8 @@
 *.pem
 *.key
 secrets/
+deploy/
+
 
 # Secrets vault - CRITICAL: Never commit!
 .secrets/
