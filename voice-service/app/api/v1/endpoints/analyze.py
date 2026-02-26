@@ -354,7 +354,7 @@ def _categorize_prompt(index: int) -> str:
         return "future"  # Future outlook
 
 
-@router.get("/health")
+@router.api_route("/health", methods=["GET", "HEAD"])
 async def health_check():
     """
     Health check endpoint for voice analysis service - HYBRID ARCHITECTURE.
