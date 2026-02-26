@@ -24,13 +24,40 @@ api.interceptors.request.use(
 // Response interceptor - handle errors
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Token expired or invalid
-      localStorage.removeItem('access_token')
-      window.location.href = '/login'
+  async (error) => {
+    const originalRequest = error.config;
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      const refreshToken = localStorage.getItem("refresh_token");
+
+      if (refreshToken) {
+        try {
+          const res = await axios.post(
+            `${api.defaults.baseURL}/api/v1/auth/refresh`,
+            { refresh_token: refreshToken },
+            { headers: { "Content-Type": "application/json" } }
+          );
+          const newToken = res.data.access_token;
+          localStorage.setItem("access_token", newToken);
+          if (res.data.refresh_token) {
+            localStorage.setItem("refresh_token", res.data.refresh_token);
+          }
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          return api(originalRequest);
+        } catch {
+          // Refresh failed — log out
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("refresh_token");
+          window.location.href = "/login";
+        }
+      } else {
+        localStorage.removeItem("access_token");
+        window.location.href = "/login";
+      }
     }
-    return Promise.reject(error)
+
+    return Promise.reject(error);
   }
 )
 
