@@ -162,10 +162,14 @@ async def register(
     access_token = create_access_token(
         data={"sub": user.email, "role": user.role}
     )
-    
+    refresh_token = create_refresh_token(
+        data={"sub": user.email, "role": user.role}
+    )
+
     # Return token and user info
     return Token(
         access_token=access_token,
+        refresh_token=refresh_token,
         token_type="bearer",
         user=UserResponse.model_validate(user)
     )
@@ -215,9 +219,13 @@ async def login(
     access_token = create_access_token(
         data={"sub": user.email, "role": user.role}
     )
-    
+    refresh_token = create_refresh_token(
+        data={"sub": user.email, "role": user.role}
+    )
+
     return Token(
         access_token=access_token,
+        refresh_token=refresh_token,
         token_type="bearer",
         user=UserResponse.model_validate(user)
     )
@@ -254,9 +262,13 @@ async def login_form(
     access_token = create_access_token(
         data={"sub": user.email, "role": user.role}
     )
-    
+    refresh_token_val = create_refresh_token(
+        data={"sub": user.email, "role": user.role}
+    )
+
     return Token(
         access_token=access_token,
+        refresh_token=refresh_token_val,
         token_type="bearer",
         user=UserResponse.model_validate(user)
     )

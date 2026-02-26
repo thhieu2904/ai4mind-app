@@ -106,6 +106,7 @@ class UserProfileResponse(UserResponse):
 class Token(BaseModel):
     """JWT token response"""
     access_token: str
+    refresh_token: Optional[str] = None
     token_type: str = "bearer"
     expires_in: int = 1800  # 30 minutes in seconds
     user: UserResponse
