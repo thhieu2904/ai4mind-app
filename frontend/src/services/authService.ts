@@ -20,20 +20,20 @@ export const authService = {
       user = {
         ...userData,
         student: userData.profile,
-        role: userData.role.toLowerCase() as
-          | "student"
-          | "parent"
-          | "counselor"
-          | "admin",
+        role: userData.role as
+          | "STUDENT"
+          | "PARENT"
+          | "COUNSELOR"
+          | "ADMIN",
       };
     } else {
       user = {
         ...userData,
-        role: userData.role.toLowerCase() as
-          | "student"
-          | "parent"
-          | "counselor"
-          | "admin",
+        role: userData.role as
+          | "STUDENT"
+          | "PARENT"
+          | "COUNSELOR"
+          | "ADMIN",
       };
     }
 
@@ -62,20 +62,20 @@ export const authService = {
       user = {
         ...userData,
         student: userData.profile,
-        role: userData.role.toLowerCase() as
-          | "student"
-          | "parent"
-          | "counselor"
-          | "admin",
+        role: userData.role as
+          | "STUDENT"
+          | "PARENT"
+          | "COUNSELOR"
+          | "ADMIN",
       };
     } else {
       user = {
         ...userData,
-        role: userData.role.toLowerCase() as
-          | "student"
-          | "parent"
-          | "counselor"
-          | "admin",
+        role: userData.role as
+          | "STUDENT"
+          | "PARENT"
+          | "COUNSELOR"
+          | "ADMIN",
       };
     }
 
@@ -101,21 +101,21 @@ export const authService = {
       return {
         ...userData,
         student: userData.profile,
-        role: userData.role.toLowerCase() as
-          | "student"
-          | "parent"
-          | "counselor"
-          | "admin",
+        role: userData.role as
+          | "STUDENT"
+          | "PARENT"
+          | "COUNSELOR"
+          | "ADMIN",
       };
     }
 
     return {
       ...userData,
-      role: userData.role.toLowerCase() as
-        | "student"
-        | "parent"
-        | "counselor"
-        | "admin",
+      role: userData.role as
+        | "STUDENT"
+        | "PARENT"
+        | "COUNSELOR"
+        | "ADMIN",
     };
   },
 };
