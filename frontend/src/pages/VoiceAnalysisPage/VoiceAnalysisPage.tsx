@@ -11,6 +11,11 @@ interface LocationState {
   gad7Severity?: string;
 }
 
+// ── Limits (keep server alive on free tier) ──────────────────────
+const MAX_RECORDING_SECONDS = 60; // 1 minute max recording (free tier: 0.1 CPU / 512 MB RAM)
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB max upload
+const WARNING_SECONDS_LEFT = 15; // show countdown warning at last 15 s
+
 // Recording prompts in Vietnamese
 const RECORDING_PROMPTS = [
   {
@@ -69,6 +74,7 @@ const VoiceAnalysisPage: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showInstructions, setShowInstructions] = useState(false);
   const [showPrompts, setShowPrompts] = useState(false);
+  const [recordingWarning, setRecordingWarning] = useState(false); // true when < WARNING_SECONDS_LEFT remain
   const [selectedPrompt, setSelectedPrompt] = useState<
     (typeof RECORDING_PROMPTS)[0] | null
   >(null);
@@ -274,10 +280,33 @@ const VoiceAnalysisPage: React.FC = () => {
       mediaRecorder.start();
       setIsRecording(true);
       setRecordingTime(0);
+      setRecordingWarning(false);
 
-      // Start timer
+      // Start timer — auto-stop at MAX_RECORDING_SECONDS
       timerIntervalRef.current = setInterval(() => {
-        setRecordingTime((prev) => prev + 1);
+        setRecordingTime((prev) => {
+          const next = prev + 1;
+          const secondsLeft = MAX_RECORDING_SECONDS - next;
+
+          // Enter warning zone
+          if (secondsLeft <= WARNING_SECONDS_LEFT) {
+            setRecordingWarning(true);
+          }
+
+          // Auto-stop when limit reached
+          if (next >= MAX_RECORDING_SECONDS) {
+            if (mediaRecorderRef.current) {
+              mediaRecorderRef.current.stop();
+            }
+            setIsRecording(false);
+            setRecordingWarning(false);
+            if (timerIntervalRef.current) {
+              clearInterval(timerIntervalRef.current);
+            }
+          }
+
+          return next;
+        });
       }, 1000);
     } catch (error) {
       console.error("Error accessing microphone:", error);
@@ -289,6 +318,7 @@ const VoiceAnalysisPage: React.FC = () => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
+      setRecordingWarning(false);
 
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
@@ -416,9 +446,9 @@ const VoiceAnalysisPage: React.FC = () => {
         return;
       }
 
-      // Check file size (10MB limit)
-      if (file.size > 10 * 1024 * 1024) {
-        alert("File quá lớn. Vui lòng chọn file nhỏ hơn 10MB.");
+      // Check file size
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        alert("File quá lớn. Vui lòng chọn file nhỏ hơn 5MB.");
         return;
       }
 
@@ -461,6 +491,16 @@ const VoiceAnalysisPage: React.FC = () => {
         console.log("⚠️ Attempting to send original blob as fallback...");
         // Fallback: try sending original with .wav extension
         wavBlob = new Blob([audioBlob], { type: "audio/wav" });
+      }
+
+      // File size guard (catches both recorded + manually-uploaded files post-conversion)
+      if (wavBlob.size > MAX_FILE_SIZE_BYTES) {
+        const sizeMB = (wavBlob.size / 1024 / 1024).toFixed(1);
+        alert(
+          `File âm thanh quá lớn (${sizeMB} MB). Vui lòng ghi âm ngắn hơn 1 phút hoặc chọn file nhỏ hơn 5 MB.`
+        );
+        setIsUploading(false);
+        return;
       }
 
       console.log("✅ Validation passed, starting analysis...");
@@ -711,16 +751,33 @@ const VoiceAnalysisPage: React.FC = () => {
 
           {/* Recording Timer */}
           {(isRecording || audioBlob) && (
-            <div className="timer-display">
+            <div className={`timer-display${recordingWarning ? " timer-warning" : ""}`}>
               {isRecording ? (
                 <>
                   <div className="recording-indicator"></div>
-                  <span>Đang ghi âm: {formatTime(recordingTime)}</span>
+                  {recordingWarning ? (
+                    <span>
+                      ⚠️ Đang ghi âm: {formatTime(recordingTime)}
+                      {" "}— còn {MAX_RECORDING_SECONDS - recordingTime}s
+                    </span>
+                  ) : (
+                    <span>
+                      Đang ghi âm: {formatTime(recordingTime)}
+                      {" "}/ {formatTime(MAX_RECORDING_SECONDS)}
+                    </span>
+                  )}
                 </>
               ) : (
                 <span>✓ Đã ghi âm: {formatTime(recordingTime)}</span>
               )}
             </div>
+          )}
+
+          {/* Time limit hint shown while ready to record */}
+          {!isRecording && !audioBlob && (
+            <p className="recording-limit-hint">
+              ⏱ Tối đa {MAX_RECORDING_SECONDS / 60} phút · Tệp tối đa {MAX_FILE_SIZE_BYTES / 1024 / 1024} MB
+            </p>
           )}
 
           {/* Action Buttons */}
@@ -811,7 +868,9 @@ const VoiceAnalysisPage: React.FC = () => {
       {isUploading && (
         <div className="upload-overlay">
           <div className="upload-overlay-content">
-            <div className="upload-overlay-icon">🧠</div>
+            {/* Drag handle — mobile bottom-sheet affordance */}
+            <div className="upload-overlay-handle" />
+            <span className="upload-overlay-icon">🧠</span>
             <h2 className="upload-overlay-title">Đang phân tích giọng nói</h2>
             <p className="upload-overlay-subtitle">
               Quá trình này mất khoảng 30–60 giây. Vui lòng không tắt trang.
