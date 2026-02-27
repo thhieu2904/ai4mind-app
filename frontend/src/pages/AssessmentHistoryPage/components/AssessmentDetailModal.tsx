@@ -10,6 +10,29 @@ import {
 } from "../../../services/assessmentService";
 import "./AssessmentDetailModal.css";
 
+// Converts **bold** markers → <strong>
+const renderMarkdown = (text: string): React.ReactNode => {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, i) =>
+    part.startsWith("**") && part.endsWith("**") ? (
+      <strong key={i}>{part.slice(2, -2)}</strong>
+    ) : (
+      part
+    )
+  );
+};
+
+// Splits multi-paragraph text on \n\n, handles **bold** in each paragraph
+const renderAnalysis = (text: string): React.ReactNode =>
+  text
+    .split(/\n{2,}/g)
+    .filter((p) => p.trim())
+    .map((paragraph, pi) => (
+      <p key={pi} style={{ margin: pi > 0 ? "0.75rem 0 0" : "0" }}>
+        {renderMarkdown(paragraph.trim())}
+      </p>
+    ));
+
 interface AssessmentDetailModalProps {
   isOpen: boolean;
   assessmentId: number | null;
@@ -217,7 +240,7 @@ const AssessmentDetailModal: React.FC<AssessmentDetailModalProps> = ({
                 <div className="detail-section">
                   <h3>Phân tích chi tiết</h3>
                   <div className="analysis-content">
-                    <p>{assessment.analysis}</p>
+                    {renderAnalysis(assessment.analysis)}
                   </div>
                 </div>
               )}
@@ -230,7 +253,7 @@ const AssessmentDetailModal: React.FC<AssessmentDetailModalProps> = ({
                     <ul className="recommendations-list">
                       {assessment.recommendations.map(
                         (recommendation, index) => (
-                          <li key={index}>{recommendation}</li>
+                          <li key={index}>{renderAnalysis(recommendation)}</li>
                         )
                       )}
                     </ul>

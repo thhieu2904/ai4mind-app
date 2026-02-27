@@ -415,7 +415,7 @@ const ComprehensiveResultsPage: React.FC = () => {
             {finalRecommendations.map((recommendation, index) => (
               <li key={index} className="recommendation-item">
                 <span className="recommendation-number">{index + 1}</span>
-                <span className="recommendation-text">{renderMarkdown(parseRecommendation(recommendation))}</span>
+                <div className="recommendation-text">{renderAnalysis(parseRecommendation(recommendation))}</div>
               </li>
             ))}
           </ul>

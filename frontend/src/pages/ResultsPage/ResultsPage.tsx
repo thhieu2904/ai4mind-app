@@ -205,7 +205,7 @@ const ResultsPage: React.FC = () => {
           <ul className="recommendations-list">
             {displayRecommendations.map((rec, index) => (
               <li key={index} className="recommendation-item">
-                {renderMarkdown(rec)}
+                {renderAnalysis(rec)}
               </li>
             ))}
           </ul>
