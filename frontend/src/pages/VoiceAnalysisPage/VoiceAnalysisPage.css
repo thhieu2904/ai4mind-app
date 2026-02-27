@@ -900,3 +900,91 @@
     display: none; /* No handle needed on desktop */
   }
 }
+
+/* ======================================================
+   In-UI Error Modal — replaces browser alert(), mobile-first bottom sheet
+   ====================================================== */
+.error-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(3px);
+  z-index: 1100;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.error-modal-sheet {
+  background: white;
+  border-radius: 24px 24px 0 0;
+  padding: 0 1.5rem 2.5rem;
+  width: 100%;
+  max-width: 100%;
+  text-align: center;
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.15);
+  animation: slideUpSheet 0.3s cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+
+.error-modal-handle {
+  width: 44px;
+  height: 5px;
+  background: #e5e7eb;
+  border-radius: 3px;
+  margin: 14px auto 1.5rem;
+}
+
+.error-modal-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.error-modal-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 0.5rem;
+}
+
+.error-modal-message {
+  font-size: 0.9375rem;
+  color: #4b5563;
+  line-height: 1.6;
+  margin: 0 0 1.5rem;
+}
+
+.error-modal-close {
+  width: 100%;
+  padding: 0.875rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 999px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.error-modal-close:hover {
+  opacity: 0.9;
+}
+
+/* Desktop: center as dialog */
+@media (min-width: 640px) {
+  .error-modal-backdrop {
+    align-items: center;
+    padding: 1.5rem;
+  }
+
+  .error-modal-sheet {
+    border-radius: 24px;
+    max-width: 400px;
+    padding: 2rem;
+    animation: fadeScaleIn 0.25s ease;
+  }
+
+  .error-modal-handle {
+    display: none;
+  }
+}

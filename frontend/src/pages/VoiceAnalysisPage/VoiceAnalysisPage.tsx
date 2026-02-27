@@ -75,6 +75,7 @@ const VoiceAnalysisPage: React.FC = () => {
   const [showInstructions, setShowInstructions] = useState(false);
   const [showPrompts, setShowPrompts] = useState(false);
   const [recordingWarning, setRecordingWarning] = useState(false); // true when < WARNING_SECONDS_LEFT remain
+  const [errorModal, setErrorModal] = useState<{ title: string; message: string } | null>(null);
   const [selectedPrompt, setSelectedPrompt] = useState<
     (typeof RECORDING_PROMPTS)[0] | null
   >(null);
@@ -166,7 +167,7 @@ const VoiceAnalysisPage: React.FC = () => {
   // Animate loading steps while the heavy API call runs
   const UPLOAD_STEPS = [
     { icon: "📤", label: "Đang tải lên file âm thanh..." },
-    { icon: "💾", label: "Đang lưu trữ vào hệ thống..." },
+    { icon: "💾", label: "Đang kiểm tra lưu trữ trong hệ thống..." },
     { icon: "🎤", label: "Đang phiên âm giọng nói..." },
     { icon: "🧠", label: "Đang phân tích cảm xúc & đặc trưng âm thanh..." },
     { icon: "✨", label: "AI đang tổng hợp kết quả toàn diện..." },
@@ -310,7 +311,10 @@ const VoiceAnalysisPage: React.FC = () => {
       }, 1000);
     } catch (error) {
       console.error("Error accessing microphone:", error);
-      alert("Không thể truy cập microphone. Vui lòng cho phép quyền truy cập.");
+      showError(
+        "Không thể truy cập microphone",
+        "Vui lòng cho phép quyền truy cập microphone trong cài đặt trình duyệt."
+      );
     }
   };
 
@@ -425,6 +429,11 @@ const VoiceAnalysisPage: React.FC = () => {
     return bufferArray;
   };
 
+  // Replaces browser alert() — shows an in-UI bottom-sheet error (mobile-safe)
+  const showError = (title: string, message: string) => {
+    setErrorModal({ title, message });
+  };
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -440,15 +449,16 @@ const VoiceAnalysisPage: React.FC = () => {
         !allowedTypes.includes(file.type) &&
         !file.name.match(/\.(wav|mp3|m4a)$/i)
       ) {
-        alert(
-          "Định dạng file không hợp lệ. Vui lòng chọn file WAV, MP3 hoặc M4A."
+        showError(
+          "Định dạng không hợp lệ",
+          "Vui lòng chọn file WAV, MP3 hoặc M4A."
         );
         return;
       }
 
       // Check file size
       if (file.size > MAX_FILE_SIZE_BYTES) {
-        alert("File quá lớn. Vui lòng chọn file nhỏ hơn 5MB.");
+        showError("File quá lớn", `Vui lòng chọn file nhỏ hơn ${MAX_FILE_SIZE_BYTES / 1024 / 1024} MB.`);
         return;
       }
 
@@ -458,13 +468,17 @@ const VoiceAnalysisPage: React.FC = () => {
 
   const handleAnalyze = async () => {
     if (!audioBlob) {
-      alert("Vui lòng ghi âm hoặc tải lên file âm thanh trước.");
+      showError(
+        "Chưa có file âm thanh",
+        "Vui lòng ghi âm hoặc tải lên file âm thanh trước khi phân tích."
+      );
       return;
     }
 
     if (!assessmentId) {
-      alert(
-        "Không tìm thấy thông tin đánh giá GAD-7. Vui lòng làm lại từ đầu."
+      showError(
+        "Thiếu thông tin đánh giá",
+        "Không tìm thấy kết quả GAD-7. Vui lòng làm lại bài đánh giá từ đầu."
       );
       return;
     }
@@ -496,8 +510,9 @@ const VoiceAnalysisPage: React.FC = () => {
       // File size guard (catches both recorded + manually-uploaded files post-conversion)
       if (wavBlob.size > MAX_FILE_SIZE_BYTES) {
         const sizeMB = (wavBlob.size / 1024 / 1024).toFixed(1);
-        alert(
-          `File âm thanh quá lớn (${sizeMB} MB). Vui lòng ghi âm ngắn hơn 1 phút hoặc chọn file nhỏ hơn 5 MB.`
+        showError(
+          "File âm thanh quá lớn",
+          `File sau khi xử lý là ${sizeMB} MB. Vui lòng ghi âm ngắn hơn 1 phút hoặc chọn file nhỏ hơn 5 MB.`
         );
         setIsUploading(false);
         return;
@@ -595,7 +610,8 @@ const VoiceAnalysisPage: React.FC = () => {
       });
     } catch (error) {
       console.error("Analysis error:", error);
-      alert(
+      showError(
+        "Phân tích thất bại",
         error instanceof Error
           ? error.message
           : "Có lỗi xảy ra khi phân tích. Vui lòng thử lại."
@@ -901,6 +917,30 @@ const VoiceAnalysisPage: React.FC = () => {
               />
             </div>
             <p className="upload-progress-text">{uploadProgress}%</p>
+          </div>
+        </div>
+      )}
+
+      {/* ── In-UI Error Modal (replaces browser alert – mobile-safe) ── */}
+      {errorModal && (
+        <div
+          className="error-modal-backdrop"
+          onClick={() => setErrorModal(null)}
+        >
+          <div
+            className="error-modal-sheet"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="error-modal-handle" />
+            <div className="error-modal-icon">⚠️</div>
+            <h3 className="error-modal-title">{errorModal.title}</h3>
+            <p className="error-modal-message">{errorModal.message}</p>
+            <button
+              className="error-modal-close"
+              onClick={() => setErrorModal(null)}
+            >
+              Đã hiểu
+            </button>
           </div>
         </div>
       )}
