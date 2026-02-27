@@ -45,13 +45,14 @@ class DeepgramService:
         Args:
             api_key: Deepgram API key from https://console.deepgram.com
         """
-        self.api_key = api_key
+        # Strip whitespace and ensure ASCII-safe (prevents httpx UnicodeEncodeError)
+        self.api_key = api_key.strip().encode('ascii', errors='ignore').decode('ascii')
         self.base_url = "https://api.deepgram.com/v1"
         self.timeout = 60.0  # 60 seconds for API calls
         
         if not self.api_key:
             raise ValueError(
-                "DEEPGRAM_API_KEY is required! "
+                "DEEPGRAM_API_KEY is required (and must be ASCII)! "
                 "Get free key at https://console.deepgram.com"
             )
         
@@ -100,9 +101,11 @@ class DeepgramService:
                 audio_data = audio.read()
             
             # Prepare API request
+            # NOTE: httpx requires all header values to be ASCII-encodable
+            content_type = self._get_content_type(audio_path)
             headers = {
                 "Authorization": f"Token {self.api_key}",
-                "Content-Type": self._get_content_type(audio_path)
+                "Content-Type": content_type.encode('ascii', errors='ignore').decode('ascii')
             }
             
             # API parameters

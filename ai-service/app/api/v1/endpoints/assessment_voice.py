@@ -115,6 +115,14 @@ async def add_voice_to_assessment(
     if file_size == 0:
         raise HTTPException(400, "Audio file is empty")
     
+    # Validate file size (voice-service hard limit is 10MB)
+    MAX_AUDIO_SIZE = 10 * 1024 * 1024  # 10MB
+    if file_size > MAX_AUDIO_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Audio file too large: {file_size / 1024 / 1024:.1f}MB. Maximum allowed size is 10MB."
+        )
+    
     logger.info(f"Audio file: {audio_file.filename}, size={file_size} bytes")
     
     # Gender mapping for voice-service
