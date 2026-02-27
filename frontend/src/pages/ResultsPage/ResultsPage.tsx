@@ -3,24 +3,28 @@ import { useLocation, useNavigate } from "react-router-dom";
 import MainLayout from "../../components/layout/MainLayout";
 import "./ResultsPage.css";
 
-// Converts **bold** markers to <strong> and \n to <br> — no extra dependency needed
+// Converts **bold** markers to <strong> — for single-line strings (recommendations)
 const renderMarkdown = (text: string): React.ReactNode => {
-  const lines = text.split("\n");
-  return lines.map((line, li) => {
-    const parts = line.split(/(\*\*[^*]+\*\*)/g);
-    return (
-      <React.Fragment key={li}>
-        {li > 0 && <br />}
-        {parts.map((part, pi) =>
-          part.startsWith("**") && part.endsWith("**") ? (
-            <strong key={pi}>{part.slice(2, -2)}</strong>
-          ) : (
-            part
-          )
-        )}
-      </React.Fragment>
-    );
-  });
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, i) =>
+    part.startsWith("**") && part.endsWith("**") ? (
+      <strong key={i}>{part.slice(2, -2)}</strong>
+    ) : (
+      part
+    )
+  );
+};
+
+// Renders multi-paragraph analysis text — splits on \n\n into <p> blocks, handles **bold**
+const renderAnalysis = (text: string): React.ReactNode => {
+  return text
+    .split(/\n{2,}/g) // split on blank lines
+    .filter((p) => p.trim())
+    .map((paragraph, pi) => (
+      <p key={pi} style={{ margin: pi > 0 ? "0.75rem 0 0" : "0" }}>
+        {renderMarkdown(paragraph.trim())}
+      </p>
+    ));
 };
 
 interface LocationState {
@@ -176,7 +180,7 @@ const ResultsPage: React.FC = () => {
         {/* Description Card */}
         <div className="info-card">
           <h2 className="info-title">Đánh giá của bạn</h2>
-          <p className="info-description">{renderMarkdown(displayAnalysis)}</p>
+          <div className="info-description">{renderAnalysis(displayAnalysis)}</div>
         </div>
 
         {/* Recommendations Card */}

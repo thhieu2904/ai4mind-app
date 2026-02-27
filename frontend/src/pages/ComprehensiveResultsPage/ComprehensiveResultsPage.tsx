@@ -27,9 +27,9 @@ interface LocationState {
 }
 
 /**
- * Parse a recommendation that may arrive as a raw Python dict string:
- * "{'priority': 1, 'suggestion': 'some text'}"  →  "some text"
- * Falls back to the original string if no suggestion key is found.
+ * Parse a recommendation that may arrive as a raw Python dict string.
+ * Handles both 'description' and 'suggestion' keys.
+ * e.g. "{'priority': 1, 'description': '**bold:** text'}" → "**bold:** text"
  */
 const parseRecommendation = (raw: string): string => {
   if (typeof raw !== "string") return String(raw);
@@ -37,23 +37,49 @@ const parseRecommendation = (raw: string): string => {
   // Try valid JSON first (future-proof)
   try {
     const obj = JSON.parse(raw);
+    if (obj?.description) return obj.description;
     if (obj?.suggestion) return obj.suggestion;
     if (obj?.text) return obj.text;
   } catch (_) {
     /* not JSON */
   }
 
-  // Extract from Python dict string: {'priority': N, 'suggestion': 'the text'}
-  const key = "'suggestion': '";
-  const start = raw.indexOf(key);
-  if (start !== -1) {
-    const valueStart = start + key.length;
-    const end = raw.lastIndexOf("'}");
-    if (end > valueStart) return raw.slice(valueStart, end);
-    return raw.slice(valueStart).replace(/'\s*}?\s*$/, "");
+  // Extract from Python dict string — try 'description' key first, then 'suggestion'
+  for (const key of ["'description': '", "'suggestion': '"]) {
+    const start = raw.indexOf(key);
+    if (start !== -1) {
+      const valueStart = start + key.length;
+      const end = raw.lastIndexOf("'}");
+      if (end > valueStart) return raw.slice(valueStart, end);
+      return raw.slice(valueStart).replace(/'\s*}?\s*$/, "");
+    }
   }
 
-  return raw;
+  return raw.trim();
+};
+
+// Converts **bold** markers to <strong> — no line-break splitting
+const renderMarkdown = (text: string): React.ReactNode => {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, i) =>
+    part.startsWith("**") && part.endsWith("**") ? (
+      <strong key={i}>{part.slice(2, -2)}</strong>
+    ) : (
+      part
+    )
+  );
+};
+
+// Renders multi-paragraph text — splits on \n\n into <p> blocks, handles **bold**
+const renderAnalysis = (text: string): React.ReactNode => {
+  return text
+    .split(/\n{2,}/g)
+    .filter((p) => p.trim())
+    .map((paragraph, pi) => (
+      <p key={pi} style={{ margin: pi > 0 ? "0.75rem 0 0" : "0" }}>
+        {renderMarkdown(paragraph.trim())}
+      </p>
+    ));
 };
 
 const ComprehensiveResultsPage: React.FC = () => {
@@ -338,7 +364,7 @@ const ComprehensiveResultsPage: React.FC = () => {
             <h2 className="analysis-title">Phân tích tổng hợp từ AI</h2>
           </div>
           <div className="analysis-content">
-            <p className="analysis-text">{finalAnalysis}</p>
+            <div className="analysis-text">{renderAnalysis(finalAnalysis)}</div>
           </div>
         </div>
 
@@ -389,7 +415,7 @@ const ComprehensiveResultsPage: React.FC = () => {
             {finalRecommendations.map((recommendation, index) => (
               <li key={index} className="recommendation-item">
                 <span className="recommendation-number">{index + 1}</span>
-                <span className="recommendation-text">{parseRecommendation(recommendation)}</span>
+                <span className="recommendation-text">{renderMarkdown(parseRecommendation(recommendation))}</span>
               </li>
             ))}
           </ul>
