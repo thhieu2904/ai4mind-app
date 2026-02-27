@@ -1,15 +1,20 @@
 """
 Assessment + Voice endpoint - Add voice analysis to existing GAD-7 assessment
 Sequential flow: User completes GAD-7 first, then adds voice recording
+
+ASYNC ARCHITECTURE (v2):
+  POST /{id}/add-voice       → Validates, uploads to S3, creates stub DB record,
+                               kicks off BackgroundTask, returns 202 immediately.
+  GET  /{id}/voice-status/{voice_id} → Poll for completion (processing/completed/failed)
 """
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status, File, Form, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status, File, Form, UploadFile
 from sqlalchemy.orm import Session
 from datetime import datetime
 import httpx
 import logging
 
-from app.core.database import get_db
+from app.core.database import get_db, SessionLocal
 from app.core.security import require_roles
 from app.core.config import settings
 from app.models.user import User
@@ -29,112 +34,201 @@ if not settings.VOICE_SERVICE_URL:
 VOICE_SERVICE_URL = settings.VOICE_SERVICE_URL
 
 
-@router.post("/{assessment_id}/add-voice", response_model=VoiceAnalysisResponse, status_code=status.HTTP_201_CREATED)
-async def add_voice_to_assessment(
+# ──────────────────────────────────────────────────────────────────────────────
+# Background pipeline (runs AFTER 202 response is sent to client)
+# ──────────────────────────────────────────────────────────────────────────────
+
+async def _run_voice_pipeline(
+    voice_analysis_id: int,
+    audio_bytes: bytes,
+    audio_filename: str,
+    audio_content_type: str,
+    gender_for_voice_service: str,
     assessment_id: int,
-    audio_file: UploadFile = File(..., description="Voice recording file"),
-    gender: str = Form(..., description="Gender for voice analysis: male, female, other, prefer_not_to_say"),
-    prompt_text: Optional[str] = Form("Hãy chia sẻ cảm xúc của bạn trong 2 tuần qua", description="Recording prompt"),
-    
-    current_user: User = Depends(require_roles(["student"])),
-    db: Session = Depends(get_db)
+    prompt_text: str,
+    file_size: int,
 ):
     """
-    Add voice analysis to existing GAD-7 assessment (Sequential flow - RECOMMENDED).
-    
-    **Use case:**
-    1. User completes GAD-7 → Gets assessment_id
-    2. User records voice → Submits to this endpoint with assessment_id
-    3. Backend loads GAD-7 from database
-    4. Backend calls voice-service
-    5. Backend calls Gemini analyze_combined() with both data
-    6. Returns comprehensive analysis
-    
-    **Benefits:**
-    - GAD-7 already saved in DB → No risk of data loss
-    - User can add voice anytime (immediately or days later)
-    - No need to pass GAD-7 data through navigation
-    - Flexible user flow
-    
-    **Process:**
-    1. Load Assessment from database by assessment_id
-    2. Validate ownership (student can only access their own assessments)
-    3. Upload audio to Supabase Storage
-    4. Send audio to voice-service for analysis
-    5. Combine GAD-7 + voice data and send to Gemini
-    6. Save VoiceAnalysis with assessment_id link
-    7. Return comprehensive analysis
-    
-    **Gender:** Required for voice normalization
-    - male, female, other, prefer_not_to_say
+    Heavy pipeline executed as a BackgroundTask:
+      1. Call voice-service (Deepgram + emotion ML)
+      2. Call Gemini for combined cross-analysis
+      3. Update VoiceAnalysis record → status='completed' (or 'failed')
     """
-    
+    db = SessionLocal()
+    try:
+        voice_analysis = db.query(VoiceAnalysis).filter(VoiceAnalysis.id == voice_analysis_id).first()
+        if not voice_analysis:
+            logger.error(f"[bg] VoiceAnalysis {voice_analysis_id} missing from DB")
+            return
+
+        assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
+        if not assessment:
+            logger.error(f"[bg] Assessment {assessment_id} missing from DB")
+            return
+
+        # ── Step 1: voice-service ──────────────────────────────────────────
+        logger.info(f"[bg] Sending to voice-service: {VOICE_SERVICE_URL}/api/v1/voice/analyze")
+        async with httpx.AsyncClient(timeout=300.0) as client:
+            response = await client.post(
+                f"{VOICE_SERVICE_URL}/api/v1/voice/analyze",
+                files={"file": (audio_filename, audio_bytes, audio_content_type or "audio/mpeg")},
+                data={"user_id": str(voice_analysis.student_id), "gender": gender_for_voice_service},
+            )
+            response.raise_for_status()
+            voice_result = response.json()
+
+        transcript_text = (
+            voice_result.get("transcript", {}).get("transcript", "")
+            if voice_result.get("transcript") else ""
+        )
+        logger.info(
+            f"[bg] Voice analysis done: emotion={voice_result.get('emotion_result', {}).get('primary_emotion')}, "
+            f"transcript_len={len(transcript_text)}"
+        )
+
+        # ── Step 2: Gemini combined analysis ──────────────────────────────
+        gad7_data = {
+            "answers": assessment.answers,
+            "total_score": assessment.total_score,
+            "severity": assessment.severity_level,
+            "functional_impairment": assessment.functional_impairment or 0,
+        }
+        try:
+            logger.info("[bg] Calling Gemini for combined analysis...")
+            gemini_result = await gemini_service.analyze_combined(
+                gad7_data=gad7_data, voice_data=voice_result
+            )
+            comprehensive_analysis = gemini_result["analysis"]
+            comprehensive_recommendations = gemini_result["recommendations"]
+            logger.info("[bg] Gemini analysis completed")
+        except Exception as e:
+            logger.error(f"[bg] Gemini error (using fallback): {e}")
+            comprehensive_analysis = (
+                f"Phân tích tổng hợp: Điểm GAD-7 là {assessment.total_score}/21 "
+                f"({assessment.severity_level}). "
+                f"Cảm xúc giọng nói: {voice_result.get('emotion_result', {}).get('primary_emotion', 'N/A')}."
+            )
+            comprehensive_recommendations = [
+                "Gặp tư vấn viên để được hỗ trợ chi tiết hơn",
+                "Thực hành các kỹ thuật thư giãn hàng ngày",
+                "Theo dõi tình trạng trong thời gian tới",
+            ]
+
+        # Normalise recommendations to plain strings
+        if comprehensive_recommendations and isinstance(comprehensive_recommendations[0], dict):
+            comprehensive_recommendations = [
+                rec.get("recommendation", str(rec)) for rec in comprehensive_recommendations
+            ]
+
+        # ── Step 3: Update DB record ──────────────────────────────────────
+        voice_analysis.audio_duration = voice_result.get("audio_duration")
+        voice_analysis.audio_format = audio_filename.rsplit(".", 1)[-1] if "." in audio_filename else "unknown"
+
+        t = voice_result.get("transcript") or {}
+        voice_analysis.transcription = t.get("transcript")
+        voice_analysis.transcription_language = t.get("language", "vi")
+        voice_analysis.word_count = t.get("word_count", 0)
+        voice_analysis.transcription_confidence = t.get("confidence")
+
+        voice_analysis.audio_features = voice_result.get("audio_features")
+
+        er = voice_result.get("emotion_result") or {}
+        voice_analysis.detected_emotions = {"primary_emotion": er.get("primary_emotion")}
+        voice_analysis.dominant_emotion = er.get("primary_emotion")
+        voice_analysis.emotion_confidence = er.get("confidence", 0.0)
+
+        ta = voice_result.get("text_analysis") or {}
+        voice_analysis.sentiment_score = ta.get("sentiment_score")
+        voice_analysis.keywords = ta.get("keywords")
+        voice_analysis.psychological_markers = ta.get("psychological_markers")
+
+        voice_analysis.normalized_features = voice_result.get("normalized_features")
+        voice_analysis.comprehensive_analysis = comprehensive_analysis
+        voice_analysis.comprehensive_recommendations = comprehensive_recommendations
+        voice_analysis.processing_status = "completed"
+        voice_analysis.processed_at = datetime.utcnow()
+        voice_analysis.processing_time = voice_result.get("processing_time", 0.0)
+
+        db.commit()
+        logger.info(f"[bg] VoiceAnalysis {voice_analysis_id} → completed ✅")
+
+    except Exception as e:
+        logger.error(f"[bg] Pipeline failed for VoiceAnalysis {voice_analysis_id}: {e}", exc_info=True)
+        try:
+            va = db.query(VoiceAnalysis).filter(VoiceAnalysis.id == voice_analysis_id).first()
+            if va:
+                va.processing_status = "failed"
+                va.has_error = 1
+                va.error_message = str(e)[:500]
+                db.commit()
+        except Exception:
+            pass
+    finally:
+        db.close()
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# POST  /{assessment_id}/add-voice  →  202 Accepted  (returns immediately)
+# ──────────────────────────────────────────────────────────────────────────────
+
+@router.post("/{assessment_id}/add-voice", status_code=status.HTTP_202_ACCEPTED)
+async def add_voice_to_assessment(
+    assessment_id: int,
+    background_tasks: BackgroundTasks,
+    audio_file: UploadFile = File(..., description="Voice recording file"),
+    gender: str = Form(..., description="Gender: male, female, other, prefer_not_to_say"),
+    prompt_text: Optional[str] = Form(
+        "Hãy chia sẻ cảm xúc của bạn trong 2 tuần qua", description="Recording prompt"
+    ),
+    current_user: User = Depends(require_roles(["student"])),
+    db: Session = Depends(get_db),
+):
+    """
+    Start async voice analysis for an existing GAD-7 assessment.
+
+    Returns 202 immediately with `voice_analysis_id`.
+    Poll  GET /{assessment_id}/voice-status/{voice_analysis_id}  until
+    `processing_status` is 'completed' or 'failed'.
+    """
     student = current_user.student
     if not student:
         raise HTTPException(403, "Only students can submit assessments")
-    
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    # STEP 1: Load Assessment from Database (Already saved!) - OPTIMIZED
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    
+
+    # ── Load & authorise assessment ──────────────────────────────────────
     assessment = db.query(Assessment).filter(
         Assessment.id == assessment_id,
-        Assessment.student_id == student.id  # Security: Only own assessments
+        Assessment.student_id == student.id,
     ).first()
-    
     if not assessment:
         raise HTTPException(404, f"Assessment {assessment_id} not found or not accessible")
-    
-    logger.info(f"Loaded assessment {assessment_id}: score={assessment.total_score}, severity={assessment.severity_level}")
-    
-    # OPTIMIZATION: Use EXISTS query instead of .count() for checking duplicates
-    # Old: .count() loads all matching rows then counts
-    # New: EXISTS returns True/False immediately
-    has_existing_voice = db.query(
-        db.query(VoiceAnalysis).filter(
-            VoiceAnalysis.assessment_id == assessment_id
-        ).exists()
-    ).scalar()
-    
-    if has_existing_voice:
-        logger.info(f"Found existing voice analysis for assessment {assessment_id}, creating another one for testing")
-    
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    # STEP 2: Process Voice Recording
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    
-    # Validate gender
+
+    # ── Validate audio file ───────────────────────────────────────────────
     valid_genders = ["male", "female", "other", "prefer_not_to_say"]
     if gender not in valid_genders:
         raise HTTPException(400, f"Gender must be one of: {', '.join(valid_genders)}")
-    
-    # Read audio file
+
     audio_bytes = await audio_file.read()
     file_size = len(audio_bytes)
-    
+
     if file_size == 0:
         raise HTTPException(400, "Audio file is empty")
-    
-    # Validate file size (voice-service hard limit is 10MB)
-    MAX_AUDIO_SIZE = 10 * 1024 * 1024  # 10MB
+
+    MAX_AUDIO_SIZE = 10 * 1024 * 1024  # 10 MB
     if file_size > MAX_AUDIO_SIZE:
         raise HTTPException(
             status_code=413,
-            detail=f"Audio file too large: {file_size / 1024 / 1024:.1f}MB. Maximum allowed size is 10MB."
+            detail=f"Audio file too large: {file_size / 1024 / 1024:.1f}MB. Maximum 10MB.",
         )
-    
-    logger.info(f"Audio file: {audio_file.filename}, size={file_size} bytes")
-    
-    # Gender mapping for voice-service
+
     gender_for_voice_service = "other" if gender == "prefer_not_to_say" else gender
-    
-    # Save to Supabase Storage
+
+    # ── Upload audio to Supabase Storage (fast, ~1-2 s) ──────────────────
     try:
         file_info = storage.save_audio(
             file_content=audio_bytes,
             filename=audio_file.filename,
             current_user=current_user,
-            db=db
+            db=db,
         )
         storage_path = file_info["path"]
         logger.info(f"Audio saved to storage: {storage_path}")
@@ -143,170 +237,100 @@ async def add_voice_to_assessment(
     except Exception as e:
         logger.error(f"Storage error: {e}", exc_info=True)
         raise HTTPException(500, f"Failed to save audio: {str(e)}")
-    
-    # Send to voice-service for analysis
-    try:
-        async with httpx.AsyncClient(timeout=300.0) as client:
-            files = {
-                "file": (audio_file.filename, audio_bytes, audio_file.content_type or "audio/mpeg")
-            }
-            data = {
-                "user_id": current_user.id,
-                "gender": gender_for_voice_service
-            }
-            
-            logger.info(f"Sending to voice-service: {VOICE_SERVICE_URL}/api/v1/voice/analyze")
-            response = await client.post(
-                f"{VOICE_SERVICE_URL}/api/v1/voice/analyze",
-                files=files,
-                data=data
-            )
-            response.raise_for_status()
-            voice_result = response.json()
-            
-        transcript_text = voice_result.get('transcript', {}).get('transcript', '') if voice_result.get('transcript') else ''
-        logger.info(f"Voice analysis completed: primary_emotion={voice_result.get('emotion_result', {}).get('primary_emotion')}, "
-                   f"transcript_length={len(transcript_text)}")
-        
-    except httpx.HTTPError as e:
-        logger.error(f"Voice service error: {e}", exc_info=True)
-        raise HTTPException(502, f"Voice analysis failed: {str(e)}")
-    except Exception as e:
-        logger.error(f"Unexpected voice service error: {e}", exc_info=True)
-        raise HTTPException(500, f"Voice processing failed: {str(e)}")
-    
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    # STEP 3: Combined Gemini Analysis (Cross-validation)
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    
-    # Prepare GAD-7 data from database (already saved!)
-    gad7_data = {
-        "answers": assessment.answers,
-        "total_score": assessment.total_score,
-        "severity": assessment.severity_level,
-        "functional_impairment": assessment.functional_impairment or 0
+
+    # ── Create stub VoiceAnalysis record immediately ──────────────────────
+    voice_analysis = VoiceAnalysis(
+        student_id=student.id,
+        assessment_id=assessment_id,
+        audio_file_path=storage_path,
+        file_size_bytes=file_size,
+        prompt_text=prompt_text,
+        gender_used=gender_for_voice_service,
+        processing_status="processing",
+    )
+    db.add(voice_analysis)
+    db.commit()
+    db.refresh(voice_analysis)
+    logger.info(f"Created stub VoiceAnalysis id={voice_analysis.id}, status=processing")
+
+    # ── Schedule heavy pipeline as background task ────────────────────────
+    background_tasks.add_task(
+        _run_voice_pipeline,
+        voice_analysis.id,
+        audio_bytes,
+        audio_file.filename,
+        audio_file.content_type or "audio/mpeg",
+        gender_for_voice_service,
+        assessment_id,
+        prompt_text,
+        file_size,
+    )
+
+    return {
+        "voice_analysis_id": voice_analysis.id,
+        "assessment_id": assessment_id,
+        "processing_status": "processing",
+        "message": "Voice analysis started. Poll voice-status endpoint for updates.",
     }
-    
-    try:
-        logger.info("Sending to Gemini for combined analysis...")
-        gemini_result = await gemini_service.analyze_combined(
-            gad7_data=gad7_data,
-            voice_data=voice_result
-        )
-        comprehensive_analysis = gemini_result["analysis"]
-        comprehensive_recommendations = gemini_result["recommendations"]
-        logger.info("Gemini comprehensive analysis completed successfully")
-        
-    except Exception as e:
-        logger.error(f"Gemini error: {e}", exc_info=True)
-        # Fallback to simple analysis
-        comprehensive_analysis = (
-            f"Phân tích tổng hợp: Điểm GAD-7 là {assessment.total_score}/21 ({assessment.severity_level}). "
-            f"Cảm xúc từ giọng nói: {voice_result.get('emotion_result', {}).get('primary_emotion', 'N/A')}. "
-            f"Cần đánh giá thêm với tư vấn viên."
-        )
-        comprehensive_recommendations = [
-            "Gặp tư vấn viên để được hỗ trợ chi tiết hơn",
-            "Thực hành các kỹ thuật thư giãn hàng ngày",
-            "Theo dõi tình trạng trong thời gian tới"
-        ]
-    
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    # STEP 4: Save VoiceAnalysis to Database (Linked to Assessment)
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    
-    # Parse recommendations if structured - handle both dict and string formats
-    if comprehensive_recommendations and len(comprehensive_recommendations) > 0:
-        try:
-            # Check if first item is dict, if so convert all
-            if isinstance(comprehensive_recommendations[0], dict):
-                comprehensive_recommendations = [
-                    rec.get("recommendation", str(rec)) if isinstance(rec, dict) else str(rec) 
-                    for rec in comprehensive_recommendations
-                ]
-        except (IndexError, AttributeError):
-            # Fallback: ensure all items are strings
-            comprehensive_recommendations = [str(rec) for rec in comprehensive_recommendations]
-    
-    try:
-        voice_analysis = VoiceAnalysis(
-            student_id=student.id,
-            assessment_id=assessment_id,  # ← Link to GAD-7!
-            
-            # File info
-            audio_file_path=storage_path,
-            file_size_bytes=file_size,
-            audio_duration=voice_result.get("audio_duration"),
-            audio_format=audio_file.filename.split(".")[-1] if "." in audio_file.filename else "unknown",
-            
-            # Prompt
-            prompt_text=prompt_text,
-            
-            # Transcription
-            transcription=voice_result.get("transcript", {}).get("transcript") if voice_result.get("transcript") else None,
-            transcription_language=voice_result.get("transcript", {}).get("language", "vi") if voice_result.get("transcript") else "vi",
-            word_count=voice_result.get("transcript", {}).get("word_count", 0) if voice_result.get("transcript") else 0,
-            transcription_confidence=voice_result.get("transcript", {}).get("confidence") if voice_result.get("transcript") else None,
-            
-            # Audio features
-            audio_features=voice_result.get("audio_features"),
-            
-            # Emotions
-            detected_emotions={"primary_emotion": voice_result.get("emotion_result", {}).get("primary_emotion")},
-            dominant_emotion=voice_result.get("emotion_result", {}).get("primary_emotion"),
-            emotion_confidence=voice_result.get("emotion_result", {}).get("confidence", 0.0),
-            
-            # Text analysis
-            sentiment_score=voice_result.get("text_analysis", {}).get("sentiment_score"),
-            keywords=voice_result.get("text_analysis", {}).get("keywords"),
-            psychological_markers=voice_result.get("text_analysis", {}).get("psychological_markers"),
-            
-            # Normalization
-            gender_used=gender_for_voice_service,
-            normalized_features=voice_result.get("normalized_features"),
-            
-            # 🆕 Comprehensive Analysis from Gemini (cross-validation)
-            comprehensive_analysis=comprehensive_analysis,
-            comprehensive_recommendations=comprehensive_recommendations,
-            
-            # Processing metadata
-            processing_status="completed",
-            processed_at=datetime.utcnow(),
-            processing_time=voice_result.get("processing_time", 0.0)
-        )
-        
-        db.add(voice_analysis)
-        db.commit()
-        db.refresh(voice_analysis)
-        
-        logger.info(f"Saved voice analysis: id={voice_analysis.id}, linked to assessment={assessment_id}")
-        
-        # Return comprehensive response
-        logger.info("🔍 Preparing response with comprehensive data...")
-        logger.info(f"comprehensive_analysis length: {len(comprehensive_analysis) if comprehensive_analysis else 0}")
-        logger.info(f"comprehensive_recommendations count: {len(comprehensive_recommendations) if comprehensive_recommendations else 0}")
-        
-        return VoiceAnalysisResponse(
-            id=voice_analysis.id,
-            student_id=voice_analysis.student_id,
-            assessment_id=voice_analysis.assessment_id,
-            audio_file_path=voice_analysis.audio_file_path,
-            transcription=voice_analysis.transcription,
-            dominant_emotion=voice_analysis.dominant_emotion,
-            sentiment_score=voice_analysis.sentiment_score,
-            processing_status=voice_analysis.processing_status,
-            created_at=voice_analysis.created_at,
-            
-            # Add comprehensive analysis from Gemini
-            comprehensive_analysis=comprehensive_analysis,
-            comprehensive_recommendations=comprehensive_recommendations,
-            
-            # Include original GAD-7 context
-            gad7_score=assessment.total_score,
-            gad7_severity=assessment.severity_level
-        )
-        
-    except Exception as e:
-        db.rollback()
-        logger.error(f"Database error: {e}", exc_info=True)
-        raise HTTPException(500, f"Failed to save voice analysis: {str(e)}")
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# GET  /{assessment_id}/voice-status/{voice_analysis_id}  →  polling endpoint
+# ──────────────────────────────────────────────────────────────────────────────
+
+@router.get("/{assessment_id}/voice-status/{voice_analysis_id}")
+async def get_voice_analysis_status(
+    assessment_id: int,
+    voice_analysis_id: int,
+    current_user: User = Depends(require_roles(["student"])),
+    db: Session = Depends(get_db),
+):
+    """
+    Poll the processing status of a voice analysis job.
+
+    Returns:
+    - processing_status = 'processing'  →  still running, poll again in 3s
+    - processing_status = 'completed'   →  full result included in response
+    - processing_status = 'failed'      →  error_message included
+    """
+    student = current_user.student
+    if not student:
+        raise HTTPException(403, "Students only")
+
+    va = db.query(VoiceAnalysis).filter(
+        VoiceAnalysis.id == voice_analysis_id,
+        VoiceAnalysis.assessment_id == assessment_id,
+        VoiceAnalysis.student_id == student.id,
+    ).first()
+
+    if not va:
+        raise HTTPException(404, "Voice analysis job not found")
+
+    if va.processing_status == "processing":
+        return {"processing_status": "processing", "voice_analysis_id": va.id}
+
+    if va.processing_status == "failed":
+        return {
+            "processing_status": "failed",
+            "voice_analysis_id": va.id,
+            "error_message": va.error_message or "Unknown error",
+        }
+
+    # Completed — return full result
+    assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
+    return {
+        "processing_status": "completed",
+        # fields expected by frontend ComprehensiveResultsPage
+        "id": va.id,
+        "student_id": va.student_id,
+        "assessment_id": va.assessment_id,
+        "audio_file_path": va.audio_file_path,
+        "transcription": va.transcription,
+        "dominant_emotion": va.dominant_emotion,
+        "sentiment_score": va.sentiment_score,
+        "comprehensive_analysis": va.comprehensive_analysis,
+        "comprehensive_recommendations": va.comprehensive_recommendations,
+        "gad7_score": assessment.total_score if assessment else None,
+        "gad7_severity": assessment.severity_level if assessment else None,
+        "created_at": va.created_at,
+    }

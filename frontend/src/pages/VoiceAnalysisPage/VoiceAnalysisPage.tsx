@@ -65,6 +65,8 @@ const VoiceAnalysisPage: React.FC = () => {
   const [recordingTime, setRecordingTime] = useState(0);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadStep, setUploadStep] = useState(0);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [showInstructions, setShowInstructions] = useState(false);
   const [showPrompts, setShowPrompts] = useState(false);
   const [selectedPrompt, setSelectedPrompt] = useState<
@@ -154,6 +156,37 @@ const VoiceAnalysisPage: React.FC = () => {
       console.log("⚠️ User is not student, role:", user?.role);
     }
   }, [user]); // ✅ useEffect dependency array
+
+  // Animate loading steps while the heavy API call runs
+  const UPLOAD_STEPS = [
+    { icon: "📤", label: "Đang tải lên file âm thanh..." },
+    { icon: "💾", label: "Đang lưu trữ vào hệ thống..." },
+    { icon: "🎤", label: "Đang phiên âm giọng nói (Deepgram)..." },
+    { icon: "🧠", label: "Đang phân tích cảm xúc & đặc trưng âm thanh..." },
+    { icon: "✨", label: "AI đang tổng hợp kết quả toàn diện..." },
+  ];
+
+  useEffect(() => {
+    if (!isUploading) return;
+    setUploadStep(0);
+    setUploadProgress(2);
+    // Schedule step transitions that roughly match real backend phases:
+    // ~2s: S3 upload done, ~8s: Deepgram done, ~20s: emotion done, ~35s: Gemini done
+    // Progress caps at 92% — only reaches 100% when poll returns 'completed'
+    const schedule: [number, number, number][] = [
+      [1800,  1, 10],
+      [6000,  2, 32],
+      [16000, 3, 62],
+      [26000, 4, 88],
+    ];
+    const timers = schedule.map(([delay, step, progress]) =>
+      window.setTimeout(() => {
+        setUploadStep(step);
+        setUploadProgress(progress);
+      }, delay)
+    );
+    return () => timers.forEach(window.clearTimeout);
+  }, [isUploading]);
 
   // Show simple "need GAD-7" message if no assessments
   if (showAssessmentSelection) {
@@ -459,21 +492,52 @@ const VoiceAnalysisPage: React.FC = () => {
       console.log("   Method: POST");
       console.log("   Headers: multipart/form-data");
 
-      // Call ai-service add-voice endpoint (not voice-service!)
+      // Call ai-service add-voice endpoint → returns 202 immediately
       const response = await api.post(
         `/api/v1/assessments/${assessmentId}/add-voice`,
         formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
+        { headers: { "Content-Type": "multipart/form-data" } }
       );
 
-      console.log("✅ API Response received:", response);
-      console.log("📊 Response data:", response.data);
+      const { voice_analysis_id } = response.data;
+      console.log(`✅ Job started, voice_analysis_id=${voice_analysis_id}`);
 
-      const result = response.data;
+      // ── Polling loop ──────────────────────────────────────────────────
+      const POLL_INTERVAL = 3000; // 3 s
+      const MAX_POLLS = 60;       // 3 min max
+      let polls = 0;
+
+      const result = await new Promise<any>((resolve, reject) => {
+        const poll = async () => {
+          polls++;
+          try {
+            const statusRes = await api.get(
+              `/api/v1/assessments/${assessmentId}/voice-status/${voice_analysis_id}`
+            );
+            const data = statusRes.data;
+
+            if (data.processing_status === "completed") {
+              return resolve(data);
+            }
+            if (data.processing_status === "failed") {
+              return reject(new Error(data.error_message || "Phân tích giọng nói thất bại"));
+            }
+            // Still processing
+            if (polls >= MAX_POLLS) {
+              return reject(new Error("Quá thời gian chờ. Vui lòng thử lại."));
+            }
+            setTimeout(poll, POLL_INTERVAL);
+          } catch (err) {
+            reject(err);
+          }
+        };
+        setTimeout(poll, POLL_INTERVAL);
+      });
+
+      // Snap to 100% before navigating
+      setUploadStep(4);
+      setUploadProgress(100);
+      await new Promise((r) => setTimeout(r, 400)); // brief pause so user sees 100%
 
       // Navigate to comprehensive results with the real data
       navigate("/comprehensive-results", {
@@ -730,7 +794,7 @@ const VoiceAnalysisPage: React.FC = () => {
             onClick={handleAnalyze}
             disabled={!audioBlob || isUploading}
           >
-            {isUploading ? "Đang phân tích..." : "Phân tích"}
+            {isUploading ? "⏳ Đang xử lý..." : "Phân tích"}
           </button>
         </div>
 
@@ -742,6 +806,45 @@ const VoiceAnalysisPage: React.FC = () => {
           </p>
         </div>
       </div>
+
+      {/* Full-screen loading overlay during heavy API call */}
+      {isUploading && (
+        <div className="upload-overlay">
+          <div className="upload-overlay-content">
+            <div className="upload-overlay-icon">🧠</div>
+            <h2 className="upload-overlay-title">Đang phân tích giọng nói</h2>
+            <p className="upload-overlay-subtitle">
+              Quá trình này mất khoảng 30–60 giây. Vui lòng không tắt trang.
+            </p>
+
+            {/* Step list */}
+            <div className="upload-steps">
+              {UPLOAD_STEPS.map((step, i) => (
+                <div
+                  key={i}
+                  className={`upload-step ${
+                    i < uploadStep ? "done" : i === uploadStep ? "active" : "pending"
+                  }`}
+                >
+                  <span className="upload-step-icon">
+                    {i < uploadStep ? "✅" : i === uploadStep ? "⏳" : "○"}
+                  </span>
+                  <span className="upload-step-label">{step.label}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Progress bar */}
+            <div className="upload-progress-bar">
+              <div
+                className="upload-progress-fill"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+            <p className="upload-progress-text">{uploadProgress}%</p>
+          </div>
+        </div>
+      )}
     </MainLayout>
   );
 };

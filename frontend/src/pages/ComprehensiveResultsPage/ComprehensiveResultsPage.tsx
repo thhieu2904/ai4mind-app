@@ -26,6 +26,36 @@ interface LocationState {
   isVoiceOnly?: boolean;
 }
 
+/**
+ * Parse a recommendation that may arrive as a raw Python dict string:
+ * "{'priority': 1, 'suggestion': 'some text'}"  →  "some text"
+ * Falls back to the original string if no suggestion key is found.
+ */
+const parseRecommendation = (raw: string): string => {
+  if (typeof raw !== "string") return String(raw);
+
+  // Try valid JSON first (future-proof)
+  try {
+    const obj = JSON.parse(raw);
+    if (obj?.suggestion) return obj.suggestion;
+    if (obj?.text) return obj.text;
+  } catch (_) {
+    /* not JSON */
+  }
+
+  // Extract from Python dict string: {'priority': N, 'suggestion': 'the text'}
+  const key = "'suggestion': '";
+  const start = raw.indexOf(key);
+  if (start !== -1) {
+    const valueStart = start + key.length;
+    const end = raw.lastIndexOf("'}");
+    if (end > valueStart) return raw.slice(valueStart, end);
+    return raw.slice(valueStart).replace(/'\s*}?\s*$/, "");
+  }
+
+  return raw;
+};
+
 const ComprehensiveResultsPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -359,7 +389,7 @@ const ComprehensiveResultsPage: React.FC = () => {
             {finalRecommendations.map((recommendation, index) => (
               <li key={index} className="recommendation-item">
                 <span className="recommendation-number">{index + 1}</span>
-                <span className="recommendation-text">{recommendation}</span>
+                <span className="recommendation-text">{parseRecommendation(recommendation)}</span>
               </li>
             ))}
           </ul>
