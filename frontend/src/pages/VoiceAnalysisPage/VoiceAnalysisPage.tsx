@@ -167,7 +167,7 @@ const VoiceAnalysisPage: React.FC = () => {
   const UPLOAD_STEPS = [
     { icon: "📤", label: "Đang tải lên file âm thanh..." },
     { icon: "💾", label: "Đang lưu trữ vào hệ thống..." },
-    { icon: "🎤", label: "Đang phiên âm giọng nói (Deepgram)..." },
+    { icon: "🎤", label: "Đang phiên âm giọng nói..." },
     { icon: "🧠", label: "Đang phân tích cảm xúc & đặc trưng âm thanh..." },
     { icon: "✨", label: "AI đang tổng hợp kết quả toàn diện..." },
   ];

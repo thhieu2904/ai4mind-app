@@ -12,6 +12,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status, 
 from sqlalchemy.orm import Session
 from datetime import datetime
 import httpx
+import json
 import logging
 
 from app.core.database import get_db, SessionLocal
@@ -143,7 +144,18 @@ async def _run_voice_pipeline(
         voice_analysis.psychological_markers = ta.get("psychological_markers")
 
         voice_analysis.normalized_features = voice_result.get("normalized_features")
+
+        # comprehensive_analysis is Column(Text) — must be a string, not a dict
+        if isinstance(comprehensive_analysis, dict):
+            comprehensive_analysis = json.dumps(comprehensive_analysis, ensure_ascii=False)
         voice_analysis.comprehensive_analysis = comprehensive_analysis
+
+        # comprehensive_recommendations is Column(JSON) — must be a list, not a JSON string
+        if isinstance(comprehensive_recommendations, str):
+            try:
+                comprehensive_recommendations = json.loads(comprehensive_recommendations)
+            except (json.JSONDecodeError, TypeError):
+                pass
         voice_analysis.comprehensive_recommendations = comprehensive_recommendations
         voice_analysis.processing_status = "completed"
         voice_analysis.processed_at = datetime.utcnow()
