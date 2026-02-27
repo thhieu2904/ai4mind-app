@@ -3,6 +3,26 @@ import { useLocation, useNavigate } from "react-router-dom";
 import MainLayout from "../../components/layout/MainLayout";
 import "./ResultsPage.css";
 
+// Converts **bold** markers to <strong> and \n to <br> — no extra dependency needed
+const renderMarkdown = (text: string): React.ReactNode => {
+  const lines = text.split("\n");
+  return lines.map((line, li) => {
+    const parts = line.split(/(\*\*[^*]+\*\*)/g);
+    return (
+      <React.Fragment key={li}>
+        {li > 0 && <br />}
+        {parts.map((part, pi) =>
+          part.startsWith("**") && part.endsWith("**") ? (
+            <strong key={pi}>{part.slice(2, -2)}</strong>
+          ) : (
+            part
+          )
+        )}
+      </React.Fragment>
+    );
+  });
+};
+
 interface LocationState {
   assessmentId: number;
   score: number;
@@ -156,7 +176,7 @@ const ResultsPage: React.FC = () => {
         {/* Description Card */}
         <div className="info-card">
           <h2 className="info-title">Đánh giá của bạn</h2>
-          <p className="info-description">{displayAnalysis}</p>
+          <p className="info-description">{renderMarkdown(displayAnalysis)}</p>
         </div>
 
         {/* Recommendations Card */}
@@ -181,7 +201,7 @@ const ResultsPage: React.FC = () => {
           <ul className="recommendations-list">
             {displayRecommendations.map((rec, index) => (
               <li key={index} className="recommendation-item">
-                {rec}
+                {renderMarkdown(rec)}
               </li>
             ))}
           </ul>
