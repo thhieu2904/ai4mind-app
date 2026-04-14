@@ -2,7 +2,7 @@
 API Dependencies
 Reusable security checks and authorization helpers
 """
-from typing import Optional
+from typing import Optional, Set
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -10,7 +10,35 @@ from app.core.database import get_db
 from app.core.security import get_current_active_user
 from app.models.user import User, UserRole
 from app.models.student import Student
+from app.models.parent import Parent, ParentConsent
 from app.models.voice_analysis import VoiceAnalysis
+
+
+def get_parent_profile(db: Session, user_id: int) -> Optional[Parent]:
+    """Get parent profile for the current authenticated user."""
+    return db.query(Parent).filter(Parent.user_id == user_id).first()
+
+
+def get_parent_student_ids(db: Session, parent_id: int) -> Set[int]:
+    """Return student IDs that parent can access via emergency contact or approved consent."""
+    emergency_contact_ids = {
+        student_id
+        for (student_id,) in db.query(Student.id)
+        .filter(Student.emergency_contact_parent_id == parent_id)
+        .all()
+    }
+
+    consent_ids = {
+        student_id
+        for (student_id,) in db.query(ParentConsent.student_id)
+        .filter(
+            ParentConsent.parent_id == parent_id,
+            ParentConsent.is_approved == 1,
+        )
+        .all()
+    }
+
+    return emergency_contact_ids.union(consent_ids)
 
 
 async def get_current_user_student(
@@ -101,14 +129,23 @@ async def check_student_access(
         # TODO: Implement student_counselor_assignments table check
         return student
     
-    # Parent access (TODO: check parent-child relationship)
+    # Parent access
     if current_user.role == UserRole.PARENT:
-        # For now, deny access
-        # TODO: Implement parent-child relationship check
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Parent access not yet implemented"
-        )
+        parent = get_parent_profile(db=db, user_id=current_user.id)
+        if not parent:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Parent profile not found"
+            )
+
+        accessible_student_ids = get_parent_student_ids(db=db, parent_id=parent.id)
+        if student.id not in accessible_student_ids:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied: You can only access linked children"
+            )
+
+        return student
     
     # Default: deny
     raise HTTPException(

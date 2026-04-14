@@ -20,7 +20,7 @@ import { useAuth } from "../../../contexts/AuthContext";
 import "./Header.css";
 
 const Header: React.FC = () => {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
@@ -103,6 +103,22 @@ const Header: React.FC = () => {
   };
 
   const handleLogoClick = () => {
+    const role = (user?.role as string)?.toUpperCase();
+    if (role === "ADMIN") {
+      navigate("/admin/dashboard");
+      return;
+    }
+
+    if (role === "COUNSELOR") {
+      navigate("/counselor/chats");
+      return;
+    }
+
+    if (role === "PARENT") {
+      navigate("/parent/dashboard");
+      return;
+    }
+
     navigate("/dashboard");
   };
 
@@ -161,12 +177,14 @@ const Header: React.FC = () => {
               <ListItemText>Đánh giá ứng dụng</ListItemText>
             </MenuItem>
 
-            <MenuItem onClick={handleExportData}>
-              <ListItemIcon>
-                <DownloadIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>Xuất dữ liệu cá nhân</ListItemText>
-            </MenuItem>
+            {user?.role === "STUDENT" && (
+              <MenuItem onClick={handleExportData}>
+                <ListItemIcon>
+                  <DownloadIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>Xuất dữ liệu cá nhân</ListItemText>
+              </MenuItem>
+            )}
 
             <Divider />
 

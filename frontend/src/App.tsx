@@ -23,6 +23,8 @@ import RatingPage from "./pages/RatingPage";
 import AdminDashboardPage from "./pages/AdminPage/AdminDashboardPage";
 import AdminUsersPage from "./pages/AdminPage/AdminUsersPage";
 import CounselorDashboardPage from "./pages/CounselorDashboardPage/CounselorDashboardPage";
+import ParentDashboardPage from "./pages/ParentDashboardPage/ParentDashboardPage";
+import ParentChildAssessmentsPage from "./pages/ParentChildAssessmentsPage/ParentChildAssessmentsPage";
 import NotImplementedPage from "./pages/NotImplementedPage";
 
 const queryClient = new QueryClient({
@@ -64,6 +66,7 @@ const RootRedirect: React.FC = () => {
   const role = (user?.role as string)?.toUpperCase();
   if (role === "ADMIN") return <Navigate to="/admin/dashboard" replace />;
   if (role === "COUNSELOR") return <Navigate to="/counselor/chats" replace />;
+  if (role === "PARENT") return <Navigate to="/parent/dashboard" replace />;
   return <Navigate to="/dashboard" replace />;
 };
 
@@ -233,6 +236,25 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <CounselorDashboardPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Parent Routes */}
+              <Route
+                path="/parent/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <ParentDashboardPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/parent/children/:studentId"
+                element={
+                  <ProtectedRoute>
+                    <ParentChildAssessmentsPage />
                   </ProtectedRoute>
                 }
               />

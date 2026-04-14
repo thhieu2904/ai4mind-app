@@ -1,0 +1,132 @@
+.parent-child-assessments {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 1rem;
+  min-height: calc(100vh - 130px);
+  background: linear-gradient(180deg, #fffaf0 0%, #fde68a 100%);
+}
+
+.parent-child-assessments__header {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.07);
+  padding: 1rem;
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.parent-child-assessments__header button {
+  border: none;
+  border-radius: 10px;
+  padding: 0.5rem 0.8rem;
+  background: #f3f4f6;
+  color: #111827;
+  cursor: pointer;
+}
+
+.parent-child-assessments__header h1 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #111827;
+}
+
+.parent-child-assessments__header p {
+  margin: 0.3rem 0 0;
+  color: #6b7280;
+}
+
+.parent-child-assessments__state-box {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 1.15rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.parent-child-assessments__state-box--error {
+  border: 1px solid #fca5a5;
+  color: #991b1b;
+}
+
+.parent-child-assessments__list {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.parent-assessment-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 1rem;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.07);
+}
+
+.parent-assessment-card header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.6rem;
+}
+
+.parent-assessment-card header h3 {
+  margin: 0;
+  color: #111827;
+  font-size: 1rem;
+}
+
+.parent-assessment-card header span {
+  color: #6b7280;
+  font-size: 0.88rem;
+}
+
+.parent-assessment-card__metrics {
+  display: grid;
+  gap: 0.25rem;
+  margin-bottom: 0.6rem;
+}
+
+.parent-assessment-card__metrics p {
+  margin: 0;
+  color: #374151;
+  font-size: 0.92rem;
+}
+
+.parent-assessment-card__analysis {
+  padding: 0.65rem;
+  border-radius: 10px;
+  background: #fef3c7;
+}
+
+.parent-assessment-card__analysis p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #78350f;
+  line-height: 1.45;
+}
+
+.parent-child-assessments__pagination {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.parent-child-assessments__pagination button {
+  border: none;
+  border-radius: 10px;
+  padding: 0.45rem 0.85rem;
+  background: #f59e0b;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.parent-child-assessments__pagination button:disabled {
+  background: #d1d5db;
+  cursor: not-allowed;
+}
+
+.parent-child-assessments__pagination span {
+  color: #1f2937;
+  font-weight: 600;
+}

@@ -53,9 +53,49 @@ async def register(
     # Check if email already exists
     existing_user = db.query(User).filter(User.email == user_data.email).first()
     if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
+        is_parent_claim = (
+            user_data.role == UserRole.PARENT
+            and existing_user.role == UserRole.PARENT
+            and not existing_user.is_active
+        )
+
+        if not is_parent_claim:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered"
+            )
+
+        # Parent account was auto-created earlier from student emergency contact.
+        # Allow parent to complete registration by setting password and activating account.
+        existing_user.full_name = user_data.full_name
+        existing_user.hashed_password = get_password_hash(user_data.password)
+        existing_user.phone = user_data.phone
+        existing_user.is_active = True
+        existing_user.is_verified = True
+
+        parent_profile = db.query(Parent).filter(Parent.user_id == existing_user.id).first()
+        if not parent_profile:
+            parent_profile = Parent(user_id=existing_user.id)
+            db.add(parent_profile)
+
+        if user_data.phone and not parent_profile.phone_number:
+            parent_profile.phone_number = user_data.phone
+
+        db.commit()
+        db.refresh(existing_user)
+
+        access_token = create_access_token(
+            data={"sub": existing_user.email, "role": existing_user.role}
+        )
+        refresh_token = create_refresh_token(
+            data={"sub": existing_user.email, "role": existing_user.role}
+        )
+
+        return Token(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_type="bearer",
+            user=UserResponse.model_validate(existing_user)
         )
     
     # Create user
@@ -311,8 +351,9 @@ async def get_me(
         if parent:
             profile = {
                 "id": parent.id,
+                "phone_number": parent.phone_number,
+                "address": parent.address,
                 "occupation": parent.occupation,
-                "relationship": parent.relationship
             }
     
     elif current_user.role == UserRole.COUNSELOR:

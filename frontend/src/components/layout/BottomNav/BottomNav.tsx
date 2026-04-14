@@ -60,6 +60,11 @@ const COUNSELOR_ITEMS = [
   { id: "profile", label: "Cá nhân",         icon: <ProfileIcon />, path: "/profile" },
 ];
 
+const PARENT_ITEMS = [
+  { id: "home",    label: "Con cái", icon: <HomeIcon />,    path: "/parent/dashboard" },
+  { id: "profile", label: "Cá nhân", icon: <ProfileIcon />, path: "/profile" },
+];
+
 const BottomNav: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -72,6 +77,8 @@ const BottomNav: React.FC = () => {
       ? ADMIN_ITEMS
       : role === "COUNSELOR"
       ? COUNSELOR_ITEMS
+      : role === "PARENT"
+      ? PARENT_ITEMS
       : STUDENT_ITEMS;
 
   return (

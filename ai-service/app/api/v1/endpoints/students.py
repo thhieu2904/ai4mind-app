@@ -168,7 +168,7 @@ def update_current_student_profile(
                 email=parent_email,
                 hashed_password=hashed_password,
                 full_name="Phụ huynh",  # Temporary name, parent can update later
-                role="parent",
+                role=UserRole.PARENT,
                 is_active=False,  # Inactive until parent verifies email
                 is_verified=False
             )

@@ -17,6 +17,7 @@ const DashboardPage: React.FC = () => {
   const role = (user?.role as string)?.toUpperCase();
   if (role === "ADMIN") return <Navigate to="/admin/dashboard" replace />;
   if (role === "COUNSELOR") return <Navigate to="/counselor/chats" replace />;
+  if (role === "PARENT") return <Navigate to="/parent/dashboard" replace />;
 
   const [welcomeData, setWelcomeData] = useState<DashboardWelcomeData | null>(
     null

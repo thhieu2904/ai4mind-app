@@ -10,6 +10,7 @@ from datetime import datetime
 
 from app.core.database import get_db
 from app.core.security import get_current_active_user, require_roles
+from app.api.dependencies import get_parent_profile, get_parent_student_ids
 from app.core.constants import GAD7_QUESTIONS_VI, GAD7_ANSWER_OPTIONS_VI, get_severity_level
 from app.schemas.assessment import (
     AssessmentCreate,
@@ -164,9 +165,18 @@ async def list_assessments(
         print(f"[DEBUG] Filtered by student_id: {student.id}")
     
     elif current_user.role == UserRole.PARENT:
-        # TODO: Filter by children with consent
-        # For now, return empty list
-        query = query.filter(Assessment.id == -1)
+        parent = get_parent_profile(db=db, user_id=current_user.id)
+        if not parent:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Parent profile not found"
+            )
+
+        accessible_student_ids = get_parent_student_ids(db=db, parent_id=parent.id)
+        if not accessible_student_ids:
+            query = query.filter(Assessment.id == -1)
+        else:
+            query = query.filter(Assessment.student_id.in_(accessible_student_ids))
     
     elif current_user.role == UserRole.COUNSELOR:
         # TODO: Filter by assigned students
@@ -400,7 +410,23 @@ async def get_assessment(
             detail="You can only view your own assessments"
         )
     
-    # TODO: Add permission checks for parents and counselors
+    # Parent can only see linked children's assessments
+    if current_user.role == UserRole.PARENT:
+        parent = get_parent_profile(db=db, user_id=current_user.id)
+        if not parent:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Parent profile not found"
+            )
+
+        accessible_student_ids = get_parent_student_ids(db=db, parent_id=parent.id)
+        if assessment.student_id not in accessible_student_ids:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied: Assessment does not belong to your linked children"
+            )
+
+    # TODO: Add assignment permission checks for counselors
     
     # Build questions with answers
     questions_with_answers = []
