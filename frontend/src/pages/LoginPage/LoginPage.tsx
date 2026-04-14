@@ -1,11 +1,14 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import useMediaQuery from "@mui/material/useMediaQuery";
 import { useAuth } from "../../contexts/AuthContext";
+import AlertModal from "../../components/AlertModal";
 import "./LoginPage.css";
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const isMobile = useMediaQuery("(max-width: 768px)");
 
   const [formData, setFormData] = useState({
     email: "",
@@ -13,8 +16,31 @@ const LoginPage: React.FC = () => {
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [desktopAlertOpen, setDesktopAlertOpen] = useState(false);
+  const [desktopAlertMessage, setDesktopAlertMessage] = useState("");
+  const errorRef = useRef<HTMLDivElement | null>(null);
+
+  const showErrorMessage = (message: string) => {
+    setError(message);
+
+    if (isMobile) {
+      window.setTimeout(() => {
+        errorRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }, 60);
+      return;
+    }
+
+    setDesktopAlertMessage(message);
+    setDesktopAlertOpen(true);
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (error) setError("");
+    if (desktopAlertOpen) setDesktopAlertOpen(false);
+
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
@@ -24,6 +50,7 @@ const LoginPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setDesktopAlertOpen(false);
     setLoading(true);
 
     try {
@@ -36,20 +63,20 @@ const LoginPage: React.FC = () => {
 
         // If detail is an array (validation errors)
         if (Array.isArray(detail)) {
-          setError(detail[0]?.msg || "Đăng nhập thất bại");
+          showErrorMessage(detail[0]?.msg || "Đăng nhập thất bại");
         }
         // If detail is a string
         else if (typeof detail === "string") {
-          setError(detail);
+          showErrorMessage(detail);
         }
         // Fallback
         else {
-          setError(
+          showErrorMessage(
             "Đăng nhập thất bại. Vui lòng kiểm tra lại email và mật khẩu."
           );
         }
       } else {
-        setError(
+        showErrorMessage(
           "Đăng nhập thất bại. Vui lòng kiểm tra lại email và mật khẩu."
         );
       }
@@ -74,7 +101,12 @@ const LoginPage: React.FC = () => {
 
         <form onSubmit={handleSubmit} className="login-form">
           {error && (
-            <div className="error-message">
+            <div
+              ref={errorRef}
+              className="error-message"
+              role="alert"
+              aria-live="assertive"
+            >
               <svg
                 className="error-icon"
                 fill="currentColor"
@@ -148,6 +180,15 @@ const LoginPage: React.FC = () => {
           </p>
         </div>
       </div>
+
+      <AlertModal
+        open={desktopAlertOpen && !isMobile}
+        onClose={() => setDesktopAlertOpen(false)}
+        type="error"
+        title="Đăng nhập thất bại"
+        message={desktopAlertMessage}
+        confirmText="Đã hiểu"
+      />
     </div>
   );
 };

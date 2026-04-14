@@ -27,6 +27,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    const handleAuthExpired = () => {
+      setUser(null);
+    };
+
+    window.addEventListener("ai4mind:auth-expired", handleAuthExpired);
+    return () => {
+      window.removeEventListener("ai4mind:auth-expired", handleAuthExpired);
+    };
+  }, []);
+
   // Check if user is logged in on mount
   useEffect(() => {
     const initAuth = async () => {
@@ -38,6 +49,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         } catch (error) {
           console.error("Failed to get user data:", error);
           localStorage.removeItem("access_token");
+          localStorage.removeItem("refresh_token");
+          setUser(null);
         }
       }
       setLoading(false);

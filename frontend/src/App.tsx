@@ -23,6 +23,7 @@ import RatingPage from "./pages/RatingPage";
 import AdminDashboardPage from "./pages/AdminPage/AdminDashboardPage";
 import AdminUsersPage from "./pages/AdminPage/AdminUsersPage";
 import CounselorDashboardPage from "./pages/CounselorDashboardPage/CounselorDashboardPage";
+import NotImplementedPage from "./pages/NotImplementedPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -77,6 +78,9 @@ function App() {
               {/* Public Routes */}
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/forgot-password" element={<NotImplementedPage />} />
+              <Route path="/terms" element={<NotImplementedPage />} />
+              <Route path="/privacy" element={<NotImplementedPage />} />
 
               {/* Protected Routes */}
               <Route

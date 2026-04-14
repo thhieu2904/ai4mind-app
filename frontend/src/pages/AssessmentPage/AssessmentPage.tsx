@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
 import MainLayout from "../../components/layout/MainLayout";
@@ -29,14 +29,30 @@ const AssessmentPage: React.FC = () => {
     new Array(GAD7_QUESTIONS.length).fill(null)
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const errorRef = useRef<HTMLDivElement | null>(null);
+
+  const showErrorMessage = (message: string) => {
+    setError(message);
+    window.setTimeout(() => {
+      errorRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }, 60);
+  };
 
   const handleAnswerSelect = (value: number) => {
+    if (error) setError("");
+
     const newAnswers = [...answers];
     newAnswers[currentQuestion] = value;
     setAnswers(newAnswers);
   };
 
   const handleNext = async () => {
+    if (error) setError("");
+
     if (currentQuestion < GAD7_QUESTIONS.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
     } else {
@@ -65,9 +81,21 @@ const AssessmentPage: React.FC = () => {
             answers: assessmentData.answers,
           },
         });
-      } catch (error) {
+      } catch (error: any) {
         console.error("Failed to submit assessment:", error);
-        alert("Không thể lưu kết quả. Vui lòng thử lại.");
+
+        const backendDetail = error?.response?.data?.detail;
+        if (typeof backendDetail === "string") {
+          showErrorMessage(backendDetail);
+        } else if (Array.isArray(backendDetail) && backendDetail.length > 0) {
+          showErrorMessage(
+            backendDetail[0]?.msg ||
+              "Không thể lưu kết quả. Vui lòng thử lại."
+          );
+        } else {
+          showErrorMessage("Không thể lưu kết quả. Vui lòng thử lại.");
+        }
+
         setIsSubmitting(false);
       }
     }
@@ -111,6 +139,17 @@ const AssessmentPage: React.FC = () => {
 
         {/* Progress indicator */}
         <div className="progress-section">
+          {error && (
+            <div
+              ref={errorRef}
+              className="assessment-error"
+              role="alert"
+              aria-live="assertive"
+            >
+              {error}
+            </div>
+          )}
+
           <div className="progress-label">
             Câu hỏi {currentQuestion + 1}/{GAD7_QUESTIONS.length}
           </div>

@@ -1,6 +1,7 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import MainLayout from "../../components/layout/MainLayout";
+import AlertModal from "../../components/AlertModal";
 import AdminService, { AdminUser, CreateUserRequest } from "../../services/adminService";
 import "./AdminUsersPage.css";
 
@@ -20,6 +21,20 @@ const ROLE_COLORS: Record<string, string> = {
   PARENT: "badge--parent",
 };
 
+const ROLE_TABS: RoleFilter[] = ["", "STUDENT", "COUNSELOR", "ADMIN"];
+
+const formatDate = (value?: string) => {
+  if (!value) return "--/--/----";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "--/--/----";
+  return date.toLocaleDateString("vi-VN");
+};
+
+const getInitial = (name: string) => {
+  const trimmed = name?.trim();
+  return trimmed ? trimmed.charAt(0).toUpperCase() : "?";
+};
+
 // ---- Sub-components ----
 
 interface UserCardProps {
@@ -28,21 +43,29 @@ interface UserCardProps {
 }
 
 const UserCard: React.FC<UserCardProps> = ({ user, onAction }) => (
-  <div className={`user-card ${!user.is_active ? "user-card--inactive" : ""}`} onClick={() => onAction(user)}>
+  <button
+    type="button"
+    className={`user-card ${!user.is_active ? "user-card--inactive" : ""}`}
+    onClick={() => onAction(user)}
+  >
     <div className="user-card__avatar">
-      {user.full_name.charAt(0).toUpperCase()}
+      {getInitial(user.full_name)}
     </div>
     <div className="user-card__info">
       <p className="user-card__name">{user.full_name}</p>
       <p className="user-card__email">{user.email}</p>
+      <p className="user-card__secondary">{user.phone?.trim() || "Chưa có số điện thoại"}</p>
     </div>
     <div className="user-card__meta">
       <span className={`badge ${ROLE_COLORS[user.role] || ""}`}>
         {ROLE_LABELS[user.role] || user.role}
       </span>
-      {!user.is_active && <span className="badge badge--inactive">Tắt</span>}
+      <span className={`badge ${user.is_active ? "badge--active" : "badge--inactive"}`}>
+        {user.is_active ? "Hoạt động" : "Tạm khóa"}
+      </span>
+      <span className="user-card__created">Tạo: {formatDate(user.created_at)}</span>
     </div>
-  </div>
+  </button>
 );
 
 // ---- Main page ----
@@ -70,26 +93,46 @@ const AdminUsersPage: React.FC = () => {
   });
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState("");
+  const [loadError, setLoadError] = useState("");
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   const loadUsers = useCallback(async () => {
     try {
       setLoading(true);
+      setLoadError("");
       const data = await AdminService.listUsers(roleFilter || undefined, search || undefined);
       setUsers(data);
     } catch {
       console.error("Failed to load users");
+      setUsers([]);
+      setLoadError("Không tải được danh sách người dùng. Bạn có thể thử lại.");
     } finally {
       setLoading(false);
     }
   }, [roleFilter, search]);
 
   useEffect(() => {
-    loadUsers();
+    void loadUsers();
   }, [loadUsers]);
+
+  const overview = useMemo(() => {
+    const total = users.length;
+    const active = users.filter((u) => u.is_active).length;
+    const inactive = total - active;
+    return { total, active, inactive };
+  }, [users]);
+
+  const filterLabel = roleFilter ? ROLE_LABELS[roleFilter] : "Tất cả vai trò";
+
+  const handleClearSearch = () => {
+    setSearchInput("");
+    setSearch("");
+  };
 
   const openActionSheet = (user: AdminUser) => {
     setSelectedUser(user);
     setFormError("");
+    setDeleteConfirmOpen(false);
     setSheetMode("action");
   };
 
@@ -118,6 +161,7 @@ const AdminUsersPage: React.FC = () => {
     setSheetMode(null);
     setSelectedUser(null);
     setFormError("");
+    setDeleteConfirmOpen(false);
   };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -136,7 +180,7 @@ const AdminUsersPage: React.FC = () => {
         phone: editPhone || undefined,
       });
       closeSheet();
-      loadUsers();
+      void loadUsers();
     } catch (err: any) {
       setFormError(err?.response?.data?.detail || "Cập nhật thất bại");
     } finally {
@@ -164,7 +208,7 @@ const AdminUsersPage: React.FC = () => {
     try {
       await AdminService.toggleActive(selectedUser.id);
       closeSheet();
-      loadUsers();
+      void loadUsers();
     } catch (err: any) {
       setFormError(err?.response?.data?.detail || "Thao tác thất bại");
     } finally {
@@ -172,14 +216,22 @@ const AdminUsersPage: React.FC = () => {
     }
   };
 
+  const requestDelete = () => {
+    if (!selectedUser) return;
+    setDeleteConfirmOpen(true);
+  };
+
   const handleDelete = async () => {
     if (!selectedUser) return;
-    if (!window.confirm(`Xoá tài khoản "${selectedUser.full_name}"?`)) return;
+
+    setDeleteConfirmOpen(false);
     setFormLoading(true);
+    setFormError("");
+
     try {
       await AdminService.deleteUser(selectedUser.id);
       closeSheet();
-      loadUsers();
+      void loadUsers();
     } catch (err: any) {
       setFormError(err?.response?.data?.detail || "Xoá tài khoản thất bại");
     } finally {
@@ -193,7 +245,7 @@ const AdminUsersPage: React.FC = () => {
     try {
       await AdminService.createUser(createForm);
       closeSheet();
-      loadUsers();
+      void loadUsers();
     } catch (err: any) {
       setFormError(err?.response?.data?.detail || "Tạo tài khoản thất bại");
     } finally {
@@ -204,40 +256,82 @@ const AdminUsersPage: React.FC = () => {
   return (
     <MainLayout>
       <div className="admin-users">
-        {/* Header */}
-        <div className="admin-users__header">
-          <h2 className="admin-users__title">Người dùng</h2>
-          <button className="admin-users__add-btn" onClick={openCreate}>+ Thêm</button>
+        <div className="admin-users__hero">
+          <div>
+            <h2 className="admin-users__title">Quản lý người dùng</h2>
+            <p className="admin-users__subtitle">Theo dõi danh sách tài khoản và thao tác nhanh trong một màn hình.</p>
+          </div>
+          <button className="admin-users__add-btn" onClick={openCreate}>+ Tạo tài khoản</button>
         </div>
 
-        {/* Search */}
-        <form className="admin-users__search" onSubmit={handleSearchSubmit}>
-          <input
-            type="text"
-            className="admin-users__search-input"
-            placeholder="Tìm tên hoặc email..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-          />
-          <button type="submit" className="admin-users__search-btn">Tìm</button>
-        </form>
+        <div className="admin-users__panel">
+          <form className="admin-users__search" onSubmit={handleSearchSubmit}>
+            <div className="admin-users__search-wrap">
+              <span className="admin-users__search-icon">⌕</span>
+              <input
+                type="text"
+                className="admin-users__search-input"
+                placeholder="Tìm theo tên hoặc email..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+              />
+            </div>
+            {(search || searchInput) && (
+              <button type="button" className="admin-users__clear-btn" onClick={handleClearSearch}>
+                Xoá
+              </button>
+            )}
+            <button type="submit" className="admin-users__search-btn">Tìm</button>
+          </form>
 
-        {/* Role filter tabs */}
-        <div className="admin-users__tabs">
-          {(["", "STUDENT", "COUNSELOR", "ADMIN"] as RoleFilter[]).map((r) => (
-            <button
-              key={r}
-              className={`admin-users__tab ${roleFilter === r ? "active" : ""}`}
-              onClick={() => setRoleFilter(r)}
-            >
-              {r === "" ? "Tất cả" : ROLE_LABELS[r]}
-            </button>
-          ))}
+          <div className="admin-users__tabs">
+            {ROLE_TABS.map((r) => (
+              <button
+                key={r}
+                className={`admin-users__tab ${roleFilter === r ? "active" : ""}`}
+                onClick={() => setRoleFilter(r)}
+              >
+                {r === "" ? "Tất cả" : ROLE_LABELS[r]}
+              </button>
+            ))}
+          </div>
+
+          <div className="admin-users__meta">
+            <span className="admin-users__meta-pill">Bộ lọc: {filterLabel}</span>
+            {search && <span className="admin-users__meta-pill">Từ khoá: {search}</span>}
+          </div>
         </div>
 
-        {/* User list */}
+        <div className="admin-users__insights">
+          <div className="admin-users__insight-card">
+            <span className="admin-users__insight-label">Đang hiển thị</span>
+            <strong className="admin-users__insight-value">{overview.total}</strong>
+          </div>
+          <div className="admin-users__insight-card">
+            <span className="admin-users__insight-label">Hoạt động</span>
+            <strong className="admin-users__insight-value">{overview.active}</strong>
+          </div>
+          <div className="admin-users__insight-card">
+            <span className="admin-users__insight-label">Tạm khóa</span>
+            <strong className="admin-users__insight-value">{overview.inactive}</strong>
+          </div>
+        </div>
+
+        {loadError && <div className="admin-users__error">{loadError}</div>}
+
+        <div className="admin-users__list-head">
+          <h3 className="admin-users__list-title">Danh sách tài khoản</h3>
+          <button className="admin-users__refresh-btn" onClick={loadUsers} disabled={loading}>
+            {loading ? "Đang tải..." : "Làm mới"}
+          </button>
+        </div>
+
         {loading ? (
-          <div className="admin-users__loading">Đang tải...</div>
+          <div className="admin-users__skeleton-list">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div key={index} className="user-card-skeleton" />
+            ))}
+          </div>
         ) : users.length === 0 ? (
           <div className="admin-users__empty">Không tìm thấy người dùng</div>
         ) : (
@@ -268,7 +362,7 @@ const AdminUsersPage: React.FC = () => {
                 <button className={`sheet-btn ${selectedUser.is_active ? "sheet-btn--warn" : "sheet-btn--success"}`} onClick={handleToggleActive} disabled={formLoading}>
                   {selectedUser.is_active ? "🚫 Vô hiệu hoá" : "✅ Kích hoạt"}
                 </button>
-                <button className="sheet-btn sheet-btn--danger" onClick={handleDelete} disabled={formLoading}>
+                <button className="sheet-btn sheet-btn--danger" onClick={requestDelete} disabled={formLoading}>
                   🗑️ Xoá tài khoản
                 </button>
                 <button className="sheet-btn sheet-btn--cancel" onClick={closeSheet}>Huỷ</button>
@@ -334,6 +428,22 @@ const AdminUsersPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      <AlertModal
+        open={deleteConfirmOpen}
+        onClose={() => setDeleteConfirmOpen(false)}
+        type="warning"
+        title="Xác nhận xoá tài khoản"
+        message={
+          selectedUser
+            ? `Bạn có chắc muốn xoá tài khoản \"${selectedUser.full_name}\" không?`
+            : "Bạn có chắc muốn xoá tài khoản này không?"
+        }
+        confirmText="Xoá tài khoản"
+        cancelText="Huỷ"
+        onConfirm={handleDelete}
+        showCancel
+      />
     </MainLayout>
   );
 };

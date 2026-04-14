@@ -56,6 +56,19 @@
   margin-bottom: 2rem;
 }
 
+.assessment-error {
+  margin-bottom: 0.875rem;
+  padding: 0.875rem 1rem;
+  border-radius: 12px;
+  border: 1px solid #fecaca;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.45;
+  scroll-margin-top: 14px;
+}
+
 .progress-label {
   font-size: 0.875rem;
   font-weight: 600;
@@ -265,6 +278,14 @@
 @media (max-width: 375px) {
   .assessment-container {
     padding: 0.75rem;
+  }
+
+  .assessment-error {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    border-width: 2px;
+    box-shadow: 0 8px 18px rgba(220, 38, 38, 0.14);
   }
 
   .assessment-title {

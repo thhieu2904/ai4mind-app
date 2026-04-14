@@ -1,12 +1,15 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import useMediaQuery from "@mui/material/useMediaQuery";
 import { useAuth } from "../../contexts/AuthContext";
+import AlertModal from "../../components/AlertModal";
 import type { RegisterRequest } from "../../types/auth";
 import "./RegisterPage.css";
 
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
   const { register } = useAuth();
+  const isMobile = useMediaQuery("(max-width: 768px)");
 
   const [formData, setFormData] = useState<RegisterRequest>({
     email: "",
@@ -22,15 +25,37 @@ const RegisterPage: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [desktopAlertOpen, setDesktopAlertOpen] = useState(false);
+  const [desktopAlertMessage, setDesktopAlertMessage] = useState("");
+  const errorRef = useRef<HTMLDivElement | null>(null);
+
+  const showErrorMessage = (message: string) => {
+    setError(message);
+
+    if (isMobile) {
+      window.setTimeout(() => {
+        errorRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }, 60);
+      return;
+    }
+
+    setDesktopAlertMessage(message);
+    setDesktopAlertOpen(true);
+  };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
+    if (error) setError("");
+    if (desktopAlertOpen) setDesktopAlertOpen(false);
+
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     });
-    setError("");
   };
 
   const validatePassword = (password: string): string | null => {
@@ -66,16 +91,17 @@ const RegisterPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setDesktopAlertOpen(false);
 
     // Validation
     if (formData.password !== confirmPassword) {
-      setError("Mật khẩu xác nhận không khớp");
+      showErrorMessage("Mật khẩu xác nhận không khớp");
       return;
     }
 
     const passwordError = validatePassword(formData.password);
     if (passwordError) {
-      setError(passwordError);
+      showErrorMessage(passwordError);
       return;
     }
 
@@ -83,11 +109,11 @@ const RegisterPage: React.FC = () => {
     if (formData.role === "STUDENT" && formData.date_of_birth) {
       const age = calculateAge(formData.date_of_birth);
       if (age < 13) {
-        setError("Học sinh phải từ 13 tuổi trở lên");
+        showErrorMessage("Học sinh phải từ 13 tuổi trở lên");
         return;
       }
       if (age > 100) {
-        setError("Ngày sinh không hợp lệ");
+        showErrorMessage("Ngày sinh không hợp lệ");
         return;
       }
     }
@@ -121,18 +147,20 @@ const RegisterPage: React.FC = () => {
         // If detail is an array of validation errors (Pydantic format)
         if (Array.isArray(detail)) {
           const firstError = detail[0];
-          setError(firstError.msg || firstError.message || "Đăng ký thất bại");
+          showErrorMessage(
+            firstError.msg || firstError.message || "Đăng ký thất bại"
+          );
         }
         // If detail is a string
         else if (typeof detail === "string") {
-          setError(detail);
+          showErrorMessage(detail);
         }
         // Fallback
         else {
-          setError("Đăng ký thất bại. Vui lòng kiểm tra lại thông tin.");
+          showErrorMessage("Đăng ký thất bại. Vui lòng kiểm tra lại thông tin.");
         }
       } else {
-        setError("Đăng ký thất bại. Vui lòng kiểm tra lại thông tin.");
+        showErrorMessage("Đăng ký thất bại. Vui lòng kiểm tra lại thông tin.");
       }
     } finally {
       setLoading(false);
@@ -157,7 +185,12 @@ const RegisterPage: React.FC = () => {
 
         <form onSubmit={handleSubmit} className="register-form">
           {error && (
-            <div className="error-message">
+            <div
+              ref={errorRef}
+              className="error-message"
+              role="alert"
+              aria-live="assertive"
+            >
               <svg
                 className="error-icon"
                 fill="currentColor"
@@ -305,6 +338,7 @@ const RegisterPage: React.FC = () => {
                 onChange={(e) => {
                   setConfirmPassword(e.target.value);
                   setError("");
+                  setDesktopAlertOpen(false);
                 }}
                 required
                 className="form-input"
@@ -419,6 +453,15 @@ const RegisterPage: React.FC = () => {
           </p>
         </div>
       </div>
+
+      <AlertModal
+        open={desktopAlertOpen && !isMobile}
+        onClose={() => setDesktopAlertOpen(false)}
+        type="error"
+        title="Đăng ký chưa thành công"
+        message={desktopAlertMessage}
+        confirmText="Đã hiểu"
+      />
     </div>
   );
 };
